@@ -1,0 +1,4 @@
+2025-03-29 13:48:34 - CADASTRO - Produto: 001 - Quantidade: 134 - Responsável: Sistema
+2025-03-29 13:48:50 - CADASTRO - Produto: 002 - Quantidade: 1234 - Responsável: Sistema
+2025-03-29 13:49:01 - CADASTRO - Produto: 003 - Quantidade: 23211 - Responsável: Sistema
+2025-03-29 13:50:13 - CADASTRO - Produto: 004 - Quantidade: 0 - Responsável: Sistema
