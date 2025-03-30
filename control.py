@@ -6,11 +6,13 @@ from tkinter import *
 from tkinter import ttk, messagebox
 
 class Produto:
-    def __init__(self, codigo, nome, quantidade, preco):
+    def __init__(self, codigo, nome, quantidade, preco, novo, seminovo):
         self.codigo = codigo
         self.nome = nome
         self.quantidade = quantidade
         self.preco = preco
+        self.novo = novo
+        self.seminovo = seminovo
 
 class SistemaEstoque:
     def __init__(self):
@@ -23,7 +25,8 @@ class SistemaEstoque:
                 dados = json.load(f)
                 for codigo, info in dados.items():
                     self.produtos[codigo] = Produto(
-                        codigo, info['nome'], info['quantidade'], info['preco'])
+                        codigo, info['nome'], info['quantidade'], info['preco'],
+                        info.get('novo', False), info.get('seminovo', False))
     
     def salvar_estoque(self):
         dados = {}
@@ -31,7 +34,9 @@ class SistemaEstoque:
             dados[codigo] = {
                 'nome': produto.nome,
                 'quantidade': produto.quantidade,
-                'preco': produto.preco
+                'preco': produto.preco,
+                'novo': produto.novo,
+                'seminovo': produto.seminovo
             }
         with open("estoque.json", "w") as f:
             json.dump(dados, f, indent=4)
@@ -40,25 +45,23 @@ class SistemaEstoque:
         data_atual = datetime.datetime.now().strftime("%Y-%m-%d")
         os.makedirs("logs", exist_ok=True)
         
-        # Log detalhado (operações)
         arquivo_detalhado = f"logs/estoque_log_{data_atual}.txt"
         data_hora = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         with open(arquivo_detalhado, "a") as f:
             f.write(f"{data_hora} - {operacao} - Produto: {codigo} - Quantidade: {quantidade} - Responsável: {responsavel}\n")
         
-        # Log simplificado (apenas quantidades)
         arquivo_quantidades = f"logs/quantidades_{data_atual}.txt"
         if not os.path.exists(arquivo_quantidades):
             with open(arquivo_quantidades, "w") as f:
-                f.write("DATA,HORA,CODIGO,NOME,QUANTIDADE\n")
+                f.write("NOME,QUANTIDADE\n")
         
         with open(arquivo_quantidades, "a") as f:
-            f.write(f"{data_atual},{data_hora.split(' ')[1]},{codigo},{self.produtos[codigo].nome},{quantidade}\n")
+            f.write(f"{self.produtos[codigo].nome},{quantidade}\n")
     
-    def cadastrar_produto(self, codigo, nome, quantidade, preco):
+    def cadastrar_produto(self, codigo, nome, quantidade, preco, novo, seminovo):
         if codigo in self.produtos:
             return False, "Produto já cadastrado!"
-        self.produtos[codigo] = Produto(codigo, nome, quantidade, preco)
+        self.produtos[codigo] = Produto(codigo, nome, quantidade, preco, novo, seminovo)
         self.salvar_estoque()
         self.registrar_log("CADASTRO", codigo, quantidade, "Sistema")
         return True, "Produto cadastrado com sucesso!"
@@ -84,105 +87,185 @@ class SistemaEstoque:
     def listar_produtos(self):
         return self.produtos.values()
 
+class LoginWindow:
+    def __init__(self, root, on_login_success):
+        self.root = root
+        self.on_login_success = on_login_success
+        
+        self.window = Toplevel(root)
+        self.window.title("Login")
+        self.window.geometry("300x200")
+        self.center_window(self.window)
+        self.window.resizable(False, False)
+        
+        # Frame principal
+        main_frame = Frame(self.window, padx=20, pady=20)
+        main_frame.pack(expand=True, fill=BOTH)
+        
+        Label(main_frame, text="Usuário:").pack(pady=(0, 5))
+        self.usuario_entry = Entry(main_frame)
+        self.usuario_entry.pack(pady=(0, 10))
+        
+        Label(main_frame, text="Senha:").pack(pady=(0, 5))
+        self.senha_entry = Entry(main_frame, show="*")
+        self.senha_entry.pack(pady=(0, 15))
+        
+        Button(main_frame, text="Entrar", command=self.verificar_login).pack(fill=X)
+        
+        # Credenciais padrão
+        self.usuario_correto = "1"
+        self.senha_correta = "adm"
+    
+    def center_window(self, window):
+        window.update_idletasks()
+        width = window.winfo_width()
+        height = window.winfo_height()
+        x = (window.winfo_screenwidth() // 2) - (width // 2)
+        y = (window.winfo_screenheight() // 2) - (height // 2)
+        window.geometry(f"{width}x{height}+{x}+{y}")
+    
+    def verificar_login(self):
+        usuario = self.usuario_entry.get()
+        senha = self.senha_entry.get()
+        
+        if usuario == self.usuario_correto and senha == self.senha_correta:
+            self.window.destroy()
+            self.on_login_success()
+        else:
+            messagebox.showerror("Erro", "Usuário ou senha incorretos!")
+
 class AplicativoEstoque:
     def __init__(self, root):
         self.root = root
         self.sistema = SistemaEstoque()
         
         self.root.title("Sistema de Controle de Estoque")
-        self.root.geometry("900x600")
+        self.root.geometry("1000x700")
+        self.center_window()
         
         # Configuração de estilo
         self.style = ttk.Style()
         self.style.theme_use("clam")
-        self.style.configure("Treeview", rowheight=30, font=('Arial', 10))
+        self.style.configure("Treeview", rowheight=30)
         self.style.configure("Treeview.Heading", font=('Arial', 10, 'bold'))
         
-        self.notebook = ttk.Notebook(root)
-        self.notebook.pack(pady=10, padx=10, fill=BOTH, expand=True)
+        # Mostra janela de login primeiro
+        self.show_login()
+    
+    def center_window(self):
+        self.root.update_idletasks()
+        width = self.root.winfo_width()
+        height = self.root.winfo_height()
+        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.root.winfo_screenheight() // 2) - (height // 2)
+        self.root.geometry(f"{width}x{height}+{x}+{y}")
+    
+    def show_login(self):
+        self.root.withdraw()
+        LoginWindow(self.root, self.on_login_success)
+    
+    def on_login_success(self):
+        self.root.deiconify()
+        self.setup_ui()
+    
+    def setup_ui(self):
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill=BOTH, expand=True, padx=10, pady=10)
         
         self.criar_aba_cadastro()
         self.criar_aba_movimentacao()
         self.criar_aba_consulta()
     
     def criar_aba_cadastro(self):
-        frame = Frame(self.notebook, padx=10, pady=10)
+        frame = Frame(self.notebook, padx=20, pady=20)
         self.notebook.add(frame, text="Cadastro de Produtos")
         
         # Formulário de cadastro
-        Label(frame, text="Código:", font=('Arial', 10)).grid(row=0, column=0, padx=5, pady=5, sticky=W)
-        self.codigo_entry = Entry(frame, font=('Arial', 10))
+        Label(frame, text="Código:").grid(row=0, column=0, padx=5, pady=5, sticky=W)
+        self.codigo_entry = Entry(frame)
         self.codigo_entry.grid(row=0, column=1, padx=5, pady=5, sticky=EW)
         
-        Label(frame, text="Nome:", font=('Arial', 10)).grid(row=1, column=0, padx=5, pady=5, sticky=W)
-        self.nome_entry = Entry(frame, font=('Arial', 10))
+        Label(frame, text="Nome:").grid(row=1, column=0, padx=5, pady=5, sticky=W)
+        self.nome_entry = Entry(frame)
         self.nome_entry.grid(row=1, column=1, padx=5, pady=5, sticky=EW)
         
-        Label(frame, text="Quantidade:", font=('Arial', 10)).grid(row=2, column=0, padx=5, pady=5, sticky=W)
-        self.quantidade_entry = Entry(frame, font=('Arial', 10))
+        Label(frame, text="Quantidade:").grid(row=2, column=0, padx=5, pady=5, sticky=W)
+        self.quantidade_entry = Entry(frame)
         self.quantidade_entry.grid(row=2, column=1, padx=5, pady=5, sticky=EW)
         
-        Label(frame, text="Preço:", font=('Arial', 10)).grid(row=3, column=0, padx=5, pady=5, sticky=W)
-        self.preco_entry = Entry(frame, font=('Arial', 10))
+        Label(frame, text="Preço:").grid(row=3, column=0, padx=5, pady=5, sticky=W)
+        self.preco_entry = Entry(frame)
         self.preco_entry.grid(row=3, column=1, padx=5, pady=5, sticky=EW)
         
-        Button(frame, text="Cadastrar", command=self.cadastrar_produto, font=('Arial', 10), bg="#4CAF50", fg="white").grid(row=4, column=0, columnspan=2, pady=10, sticky=EW)
+        # Checkboxes
+        self.novo_var = BooleanVar()
+        Checkbutton(frame, text="Novo", variable=self.novo_var).grid(row=4, column=0, padx=5, pady=5, sticky=W)
+        
+        self.seminovo_var = BooleanVar()
+        Checkbutton(frame, text="Semi-novo", variable=self.seminovo_var).grid(row=4, column=1, padx=5, pady=5, sticky=W)
+        
+        Button(frame, text="Cadastrar", command=self.cadastrar_produto).grid(row=5, column=0, columnspan=2, pady=10, sticky=EW)
     
     def criar_aba_movimentacao(self):
-        frame = Frame(self.notebook, padx=10, pady=10)
+        frame = Frame(self.notebook, padx=20, pady=20)
         self.notebook.add(frame, text="Movimentação")
         
         # Frame de entrada
-        entrada_frame = LabelFrame(frame, text="Entrada no Estoque", padx=10, pady=10, font=('Arial', 10, 'bold'))
+        entrada_frame = LabelFrame(frame, text="Entrada no Estoque", padx=10, pady=10)
         entrada_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         
-        Label(entrada_frame, text="Código:", font=('Arial', 10)).grid(row=0, column=0, padx=5, pady=5)
-        self.entrada_codigo = Entry(entrada_frame, font=('Arial', 10))
+        Label(entrada_frame, text="Código:").grid(row=0, column=0, padx=5, pady=5)
+        self.entrada_codigo = Entry(entrada_frame)
         self.entrada_codigo.grid(row=0, column=1, padx=5, pady=5)
         
-        Label(entrada_frame, text="Quantidade:", font=('Arial', 10)).grid(row=1, column=0, padx=5, pady=5)
-        self.entrada_quantidade = Entry(entrada_frame, font=('Arial', 10))
+        Label(entrada_frame, text="Quantidade:").grid(row=1, column=0, padx=5, pady=5)
+        self.entrada_quantidade = Entry(entrada_frame)
         self.entrada_quantidade.grid(row=1, column=1, padx=5, pady=5)
         
-        Label(entrada_frame, text="Responsável:", font=('Arial', 10)).grid(row=2, column=0, padx=5, pady=5)
-        self.entrada_responsavel = Entry(entrada_frame, font=('Arial', 10))
+        Label(entrada_frame, text="Responsável:").grid(row=2, column=0, padx=5, pady=5)
+        self.entrada_responsavel = Entry(entrada_frame)
         self.entrada_responsavel.grid(row=2, column=1, padx=5, pady=5)
         
-        Button(entrada_frame, text="Registrar Entrada", command=self.registrar_entrada, font=('Arial', 10), bg="#2196F3", fg="white").grid(row=3, column=0, columnspan=2, pady=5, sticky=EW)
+        Button(entrada_frame, text="Registrar Entrada", command=self.registrar_entrada).grid(row=3, column=0, columnspan=2, pady=5, sticky=EW)
         
         # Frame de saída
-        saida_frame = LabelFrame(frame, text="Saída do Estoque", padx=10, pady=10, font=('Arial', 10, 'bold'))
+        saida_frame = LabelFrame(frame, text="Saída do Estoque", padx=10, pady=10)
         saida_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
         
-        Label(saida_frame, text="Código:", font=('Arial', 10)).grid(row=0, column=0, padx=5, pady=5)
-        self.saida_codigo = Entry(saida_frame, font=('Arial', 10))
+        Label(saida_frame, text="Código:").grid(row=0, column=0, padx=5, pady=5)
+        self.saida_codigo = Entry(saida_frame)
         self.saida_codigo.grid(row=0, column=1, padx=5, pady=5)
         
-        Label(saida_frame, text="Quantidade:", font=('Arial', 10)).grid(row=1, column=0, padx=5, pady=5)
-        self.saida_quantidade = Entry(saida_frame, font=('Arial', 10))
+        Label(saida_frame, text="Quantidade:").grid(row=1, column=0, padx=5, pady=5)
+        self.saida_quantidade = Entry(saida_frame)
         self.saida_quantidade.grid(row=1, column=1, padx=5, pady=5)
         
-        Label(saida_frame, text="Responsável:", font=('Arial', 10)).grid(row=2, column=0, padx=5, pady=5)
-        self.saida_responsavel = Entry(saida_frame, font=('Arial', 10))
+        Label(saida_frame, text="Responsável:").grid(row=2, column=0, padx=5, pady=5)
+        self.saida_responsavel = Entry(saida_frame)
         self.saida_responsavel.grid(row=2, column=1, padx=5, pady=5)
         
-        Button(saida_frame, text="Registrar Saída", command=self.registrar_saida, font=('Arial', 10), bg="#F44336", fg="white").grid(row=3, column=0, columnspan=2, pady=5, sticky=EW)
+        Button(saida_frame, text="Registrar Saída", command=self.registrar_saida).grid(row=3, column=0, columnspan=2, pady=5, sticky=EW)
     
     def criar_aba_consulta(self):
-        frame = Frame(self.notebook, padx=10, pady=10)
+        frame = Frame(self.notebook, padx=20, pady=20)
         self.notebook.add(frame, text="Consulta de Estoque")
         
-        # Treeview para exibir produtos
-        self.tree = ttk.Treeview(frame, columns=("Codigo", "Nome", "Quantidade", "Preco"), show="headings", height=15)
-        self.tree.heading("Codigo", text="Código")
-        self.tree.heading("Nome", text="Nome")
-        self.tree.heading("Quantidade", text="Quantidade")
-        self.tree.heading("Preco", text="Preço")
+        # Treeview
+        self.tree = ttk.Treeview(frame, columns=("Codigo", "Nome", "Quantidade", "Preco", "Novo", "SemiNovo"), show="headings")
         
-        self.tree.column("Codigo", width=120, anchor=CENTER)
-        self.tree.column("Nome", width=250, anchor=W)
-        self.tree.column("Quantidade", width=120, anchor=CENTER)
-        self.tree.column("Preco", width=120, anchor=E)
+        # Configura colunas
+        columns = [
+            ("Código", 100, CENTER),
+            ("Nome", 250, W),
+            ("Quantidade", 100, CENTER),
+            ("Preço", 100, E),
+            ("Novo", 80, CENTER),
+            ("Semi-novo", 80, CENTER)
+        ]
+        
+        for heading, width, anchor in columns:
+            self.tree.heading(heading, text=heading)
+            self.tree.column(heading, width=width, anchor=anchor)
         
         # Barra de rolagem
         scrollbar = ttk.Scrollbar(frame, orient="vertical", command=self.tree.yview)
@@ -190,16 +273,16 @@ class AplicativoEstoque:
         scrollbar.pack(side="right", fill="y")
         self.tree.pack(fill=BOTH, expand=True)
         
-        # Frame para botões
+        # Botões
         btn_frame = Frame(frame)
         btn_frame.pack(pady=10)
         
-        Button(btn_frame, text="Atualizar Lista", command=self.atualizar_lista, font=('Arial', 10)).pack(side=LEFT, padx=5)
-        Button(btn_frame, text="Copiar Log de Quantidades", command=self.copiar_log_quantidades, font=('Arial', 10)).pack(side=LEFT, padx=5)
+        Button(btn_frame, text="Atualizar Lista", command=self.atualizar_lista).pack(side=LEFT, padx=5)
+        Button(btn_frame, text="Copiar Log", command=self.copiar_log_quantidades).pack(side=LEFT, padx=5)
         
-        # Configura cores para estoque baixo
-        self.tree.tag_configure('estoque_zero', background='#ffdddd')  # Vermelho claro
-        self.tree.tag_configure('estoque_baixo', background='#fff3cd')  # Amarelo claro
+        # Configura cores
+        self.tree.tag_configure('estoque_zero', background='#ffdddd')
+        self.tree.tag_configure('estoque_baixo', background='#fff3cd')
         
         self.atualizar_lista()
     
@@ -208,6 +291,8 @@ class AplicativoEstoque:
         nome = self.nome_entry.get().strip()
         quantidade = self.quantidade_entry.get().strip()
         preco = self.preco_entry.get().strip()
+        novo = self.novo_var.get()
+        seminovo = self.seminovo_var.get()
         
         if not codigo or not nome or not quantidade or not preco:
             messagebox.showerror("Erro", "Todos os campos são obrigatórios!")
@@ -220,13 +305,15 @@ class AplicativoEstoque:
             messagebox.showerror("Erro", "Quantidade deve ser inteiro e preço deve ser número válido!")
             return
         
-        sucesso, mensagem = self.sistema.cadastrar_produto(codigo, nome, quantidade, preco)
+        sucesso, mensagem = self.sistema.cadastrar_produto(codigo, nome, quantidade, preco, novo, seminovo)
         if sucesso:
             messagebox.showinfo("Sucesso", mensagem)
             self.codigo_entry.delete(0, END)
             self.nome_entry.delete(0, END)
             self.quantidade_entry.delete(0, END)
             self.preco_entry.delete(0, END)
+            self.novo_var.set(False)
+            self.seminovo_var.set(False)
             self.atualizar_lista()
         else:
             messagebox.showerror("Erro", mensagem)
@@ -282,11 +369,9 @@ class AplicativoEstoque:
             messagebox.showerror("Erro", mensagem)
     
     def atualizar_lista(self):
-        # Limpa a treeview
         for item in self.tree.get_children():
             self.tree.delete(item)
         
-        # Adiciona os produtos com formatação condicional
         for produto in self.sistema.listar_produtos():
             tags = ()
             if produto.quantidade == 0:
@@ -295,10 +380,12 @@ class AplicativoEstoque:
                 tags = ('estoque_baixo',)
             
             self.tree.insert("", END, values=(
-                produto.codigo, 
-                produto.nome, 
-                produto.quantidade, 
-                f"R$ {produto.preco:.2f}"
+                produto.codigo,
+                produto.nome,
+                produto.quantidade,
+                f"R$ {produto.preco:.2f}",
+                "Sim" if produto.novo else "Não",
+                "Sim" if produto.seminovo else "Não"
             ), tags=tags)
     
     def copiar_log_quantidades(self):
