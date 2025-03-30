@@ -2,4 +2,4 @@
 .env
 logs
 *.json
-script estoques/import json.py
+script estoques/*.py
