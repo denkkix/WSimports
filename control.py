@@ -6,17 +6,19 @@ from tkinter import *
 from tkinter import ttk, messagebox
 
 class Produto:
-    def __init__(self, codigo, nome, quantidade, preco, novo, seminovo):
+    def __init__(self, codigo, nome, quantidade, preco, novo, seminovo, categoria):
         self.codigo = codigo
         self.nome = nome
         self.quantidade = quantidade
         self.preco = preco
         self.novo = novo
         self.seminovo = seminovo
+        self.categoria = categoria
 
 class SistemaEstoque:
     def __init__(self):
         self.produtos = {}
+        self.categorias = ["Apple", "Xiaomi", "Samsung", "Video Games"]
         self.carregar_estoque()
         
     def carregar_estoque(self):
@@ -31,7 +33,9 @@ class SistemaEstoque:
                             info['quantidade'], 
                             info['preco'],
                             info.get('novo', False),
-                            info.get('seminovo', False))
+                            info.get('seminovo', False),
+                            info.get('categoria', '')
+                        )
             except Exception as e:
                 messagebox.showerror("Erro", f"Falha ao carregar estoque: {str(e)}")
                 self.produtos = {}
@@ -45,7 +49,8 @@ class SistemaEstoque:
                     'quantidade': produto.quantidade,
                     'preco': produto.preco,
                     'novo': produto.novo,
-                    'seminovo': produto.seminovo
+                    'seminovo': produto.seminovo,
+                    'categoria': produto.categoria
                 }
             with open("estoque.json", "w", encoding='utf-8') as f:
                 json.dump(dados, f, indent=4, ensure_ascii=False)
@@ -59,26 +64,24 @@ class SistemaEstoque:
             data_atual = datetime.datetime.now().strftime("%Y-%m-%d")
             os.makedirs("logs", exist_ok=True)
             
-            # Log detalhado
             arquivo_detalhado = f"logs/estoque_log_{data_atual}.txt"
             data_hora = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             with open(arquivo_detalhado, "a", encoding='utf-8') as f:
                 f.write(f"{data_hora} - {operacao} - Produto: {codigo} - Quantidade: {quantidade} - Responsável: {responsavel}\n")
             
-            # Log simplificado
             arquivo_quantidades = f"logs/quantidades_{data_atual}.txt"
             if not os.path.exists(arquivo_quantidades):
                 with open(arquivo_quantidades, "w", encoding='utf-8') as f:
-                    f.write("NOME,QUANTIDADE\n")
+                    f.write("NOME,QUANTIDADE,CATEGORIA\n")
             
             produto = self.produtos.get(codigo)
             if produto:
                 with open(arquivo_quantidades, "a", encoding='utf-8') as f:
-                    f.write(f"{produto.nome},{quantidade}\n")
+                    f.write(f"{produto.nome},{quantidade},{produto.categoria}\n")
         except Exception as e:
             messagebox.showerror("Erro", f"Falha ao registrar log: {str(e)}")
     
-    def cadastrar_produto(self, codigo, nome, quantidade, preco, novo, seminovo):
+    def cadastrar_produto(self, codigo, nome, quantidade, preco, novo, seminovo, categoria):
         if codigo in self.produtos:
             return False, "Produto já cadastrado!"
         
@@ -88,7 +91,7 @@ class SistemaEstoque:
         except ValueError:
             return False, "Quantidade deve ser inteiro e preço deve ser número válido!"
         
-        self.produtos[codigo] = Produto(codigo, nome, quantidade, preco, novo, seminovo)
+        self.produtos[codigo] = Produto(codigo, nome, quantidade, preco, novo, seminovo, categoria)
         if self.salvar_estoque():
             self.registrar_log("CADASTRO", codigo, quantidade, "Sistema")
             return True, "Produto cadastrado com sucesso!"
@@ -187,7 +190,7 @@ class AplicativoEstoque:
         self.sistema = SistemaEstoque()
         
         self.root.title("Sistema de Controle de Estoque")
-        self.root.geometry("1000x700")
+        self.root.geometry("1100x750")
         self.center_window()
         
         self.style = ttk.Style()
@@ -195,7 +198,14 @@ class AplicativoEstoque:
         self.style.configure("Treeview", rowheight=30, font=('Arial', 10))
         self.style.configure("Treeview.Heading", font=('Arial', 10, 'bold'))
         
-        self.show_login()
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill=BOTH, expand=True, padx=10, pady=10)
+        
+        self.criar_aba_cadastro()
+        self.criar_aba_movimentacao()
+        self.criar_aba_consulta()
+        
+        self.atualizar_lista()
     
     def center_window(self):
         self.root.update_idletasks()
@@ -240,16 +250,26 @@ class AplicativoEstoque:
             entry.grid(row=i, column=1, padx=5, pady=5, sticky=EW)
             setattr(self, var_name, entry)
         
+        Label(frame, text="Categoria:").grid(row=4, column=0, padx=5, pady=5, sticky=W)
+        self.categoria_var = StringVar()
+        self.categoria_combobox = ttk.Combobox(
+            frame, 
+            textvariable=self.categoria_var,
+            values=self.sistema.categorias,
+            state="readonly"
+        )
+        self.categoria_combobox.grid(row=4, column=1, padx=5, pady=5, sticky=EW)
+        self.categoria_combobox.set("Selecione")  # Valor padrão
+        
         # Checkboxes
         self.novo_var = BooleanVar()
-        Checkbutton(frame, text="Novo", variable=self.novo_var).grid(row=4, column=0, padx=5, pady=5, sticky=W)
+        Checkbutton(frame, text="Novo", variable=self.novo_var).grid(row=5, column=0, padx=5, pady=5, sticky=W)
         
         self.seminovo_var = BooleanVar()
-        Checkbutton(frame, text="Semi-novo", variable=self.seminovo_var).grid(row=4, column=1, padx=5, pady=5, sticky=W)
+        Checkbutton(frame, text="Semi-novo", variable=self.seminovo_var).grid(row=5, column=1, padx=5, pady=5, sticky=W)
         
-        Button(frame, text="Cadastrar", command=self.cadastrar_produto).grid(row=5, column=0, columnspan=2, pady=10, sticky=EW)
+        Button(frame, text="Cadastrar", command=self.cadastrar_produto).grid(row=6, column=0, columnspan=2, pady=10, sticky=EW)
         
-        # Configura peso das colunas
         frame.columnconfigure(1, weight=1)
     
     def criar_aba_movimentacao(self):
@@ -292,17 +312,15 @@ class AplicativoEstoque:
         frame = Frame(self.notebook)
         self.notebook.add(frame, text="Consulta de Estoque", padding=10)
         
-        # Container principal
         container = Frame(frame)
         container.pack(fill=BOTH, expand=True)
         
-        # Treeview com scrollbars
         scroll_y = ttk.Scrollbar(container, orient="vertical")
         scroll_x = ttk.Scrollbar(container, orient="horizontal")
         
         self.tree = ttk.Treeview(
             container,
-            columns=("Codigo", "Nome", "Quantidade", "Preco", "Novo", "SemiNovo"),
+            columns=("Codigo", "Nome", "Quantidade", "Preco", "Categoria", "Novo", "SemiNovo"),
             show="headings",
             yscrollcommand=scroll_y.set,
             xscrollcommand=scroll_x.set
@@ -314,10 +332,11 @@ class AplicativoEstoque:
         # Configura colunas
         colunas = [
             ("Codigo", 100, CENTER),
-            ("Nome", 250, W),
-            ("Quantidade", 100, CENTER),
-            ("Preco", 100, E),
-            ("Novo", 80, CENTER),
+            ("Nome", 200, W),
+            ("Quantidade", 80, CENTER),
+            ("Preco", 80, E),
+            ("Categoria", 100, CENTER),
+            ("Novo", 60, CENTER),
             ("SemiNovo", 80, CENTER)
         ]
         
@@ -325,16 +344,13 @@ class AplicativoEstoque:
             self.tree.heading(heading, text=heading)
             self.tree.column(heading, width=width, anchor=anchor)
         
-        # Layout
         scroll_y.pack(side=RIGHT, fill=Y)
         scroll_x.pack(side=BOTTOM, fill=X)
         self.tree.pack(side=LEFT, fill=BOTH, expand=True)
         
-        # Tags para cores
         self.tree.tag_configure('estoque_zero', background='#ffdddd')
         self.tree.tag_configure('estoque_baixo', background='#fff3cd')
         
-        # Botões
         btn_frame = Frame(frame)
         btn_frame.pack(fill=X, pady=5)
         
@@ -348,18 +364,23 @@ class AplicativoEstoque:
         preco = self.preco_entry.get().strip()
         novo = self.novo_var.get()
         seminovo = self.seminovo_var.get()
+        categoria = self.categoria_var.get()
         
-        if not all([codigo, nome, quantidade, preco]):
+        if not all([codigo, nome, quantidade, preco]) or categoria == "Selecione":
             messagebox.showerror("Erro", "Todos os campos são obrigatórios!")
             return
         
-        sucesso, mensagem = self.sistema.cadastrar_produto(codigo, nome, quantidade, preco, novo, seminovo)
+        sucesso, mensagem = self.sistema.cadastrar_produto(
+            codigo, nome, quantidade, preco, novo, seminovo, categoria
+        )
+        
         if sucesso:
             messagebox.showinfo("Sucesso", mensagem)
             self.codigo_entry.delete(0, END)
             self.nome_entry.delete(0, END)
             self.quantidade_entry.delete(0, END)
             self.preco_entry.delete(0, END)
+            self.categoria_combobox.set("Selecione")
             self.novo_var.set(False)
             self.seminovo_var.set(False)
             self.atualizar_lista()
@@ -405,11 +426,9 @@ class AplicativoEstoque:
             messagebox.showerror("Erro", mensagem)
     
     def atualizar_lista(self):
-        # Limpa a treeview
         for item in self.tree.get_children():
             self.tree.delete(item)
         
-        # Adiciona os produtos
         for produto in self.sistema.listar_produtos():
             tags = []
             if produto.quantidade == 0:
@@ -422,6 +441,7 @@ class AplicativoEstoque:
                 produto.nome,
                 produto.quantidade,
                 f"R$ {produto.preco:.2f}",
+                produto.categoria,
                 "Sim" if produto.novo else "Não",
                 "Sim" if produto.seminovo else "Não"
             ), tags=tags)

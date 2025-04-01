@@ -3,3 +3,4 @@
 logs
 *.json
 script estoques/*.py
+control2.py
