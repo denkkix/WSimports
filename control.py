@@ -133,78 +133,27 @@ class SistemaEstoque:
     def listar_produtos(self):
         return list(self.produtos.values())
 
-class LoginWindow:
-    def __init__(self, root, on_login_success):
-        self.root = root
-        self.on_login_success = on_login_success
-        
-        self.window = Toplevel(root)
-        self.window.title("Login")
-        self.window.geometry("300x200")
-        self.window.resizable(False, False)
-        self.center_window()
-        
-        main_frame = Frame(self.window, padx=20, pady=20)
-        main_frame.pack(expand=True, fill=BOTH)
-        
-        Label(main_frame, text="Usuário:").pack(pady=(0, 5))
-        self.usuario_entry = Entry(main_frame)
-        self.usuario_entry.pack(pady=(0, 10))
-        
-        Label(main_frame, text="Senha:").pack(pady=(0, 5))
-        self.senha_entry = Entry(main_frame, show="*")
-        self.senha_entry.pack(pady=(0, 15))
-        
-        Button(main_frame, text="Entrar", command=self.verificar_login).pack(fill=X)
-        
-        # Credenciais padrão
-        self.usuario_correto = "1"
-        self.senha_correta = "1"
-        
-        # Foca no campo de usuário ao abrir
-        self.usuario_entry.focus_set()
-    
-    def center_window(self):
-        self.window.update_idletasks()
-        width = self.window.winfo_width()
-        height = self.window.winfo_height()
-        x = (self.window.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.window.winfo_screenheight() // 2) - (height // 2)
-        self.window.geometry(f"{width}x{height}+{x}+{y}")
-    
-    def verificar_login(self):
-        usuario = self.usuario_entry.get().strip()
-        senha = self.senha_entry.get().strip()
-        
-        if usuario == self.usuario_correto and senha == self.senha_correta:
-            self.window.destroy()
-            self.on_login_success()
-        else:
-            messagebox.showerror("Erro", "Usuário ou senha incorretos!")
-            self.senha_entry.delete(0, END)
-            self.senha_entry.focus_set()
-
 class AplicativoEstoque:
     def __init__(self, root):
         self.root = root
         self.sistema = SistemaEstoque()
-        
+    
         self.root.title("Sistema de Controle de Estoque")
         self.root.geometry("1100x750")
         self.center_window()
-        
+    
         self.style = ttk.Style()
         self.style.theme_use("clam")
         self.style.configure("Treeview", rowheight=30, font=('Arial', 10))
         self.style.configure("Treeview.Heading", font=('Arial', 10, 'bold'))
-        
+    
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill=BOTH, expand=True, padx=10, pady=10)
-        
+    
         self.criar_aba_cadastro()
         self.criar_aba_movimentacao()
         self.criar_aba_consulta()
-        
+    
         self.atualizar_lista()
     
     def center_window(self):
@@ -215,9 +164,6 @@ class AplicativoEstoque:
         y = (self.root.winfo_screenheight() // 2) - (height // 2)
         self.root.geometry(f"{width}x{height}+{x}+{y}")
     
-    def show_login(self):
-        self.root.withdraw()
-        LoginWindow(self.root, self.init_ui)
     
     def init_ui(self):
         self.root.deiconify()
