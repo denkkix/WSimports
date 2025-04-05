@@ -60,27 +60,51 @@ class SistemaEstoque:
             messagebox.showerror("Erro", f"Falha ao salvar estoque: {e}")
             return False
 
-    def registrar_log(self, operacao: str, codigo: str, quantidade: int, responsavel: str):
+    def gerar_log_produtos(self):
         try:
             data_atual = datetime.datetime.now().strftime("%Y-%m-%d")
             os.makedirs(self.logs_dir, exist_ok=True)
-            data_hora = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            arquivo_produtos = os.path.join(self.logs_dir, f"log_produto_{data_atual}.txt")
+        
+            conteudo = """Pegamos seu usado como parte do pagamento. 📲🔄
+
+Parcelamos em até 18x cartão ou em até 36x no boleto. 💳📄
+
+"""
+        
+            categorias = {
+                "Video Games": [],
+                "Apple": [],
+                "Xiaomi Lacrados": [],
+                "Samsung": []
+            }
+        
+            if self.produtos:
+                for produto in self.produtos.values():
+                    if produto.categoria == "Video Games":
+                        categorias["Video Games"].append(produto.nome)
+                    elif produto.categoria == "Apple":
+                        categorias["Apple"].append(produto.nome)
+                    elif produto.categoria == "Xiaomi":
+                        categorias["Xiaomi Lacrados"].append(produto.nome)
+                    elif produto.categoria == "Samsung":
+                        categorias["Samsung"].append(produto.nome)
             
-            arquivo_detalhado = os.path.join(self.logs_dir, f"estoque_log_{data_atual}.txt")
-            with open(arquivo_detalhado, "a", encoding="utf-8") as f:
-                f.write(f"{data_hora} - {operacao} - Produto: {codigo} - Quantidade: {quantidade} - Responsável: {responsavel}\n")
+                for categoria, produtos in categorias.items():
+                    if produtos:
+                        conteudo += f"⬇ {categoria} ⬇\n\n"
+                        conteudo += "\n".join(f"- {produto}" for produto in produtos)
+                        conteudo += "\n\n"
+            else:
+                conteudo += "⚠ Nenhum produto cadastrado no sistema.\n"
+        
+            with open(arquivo_produtos, "w", encoding='utf-8') as f:
+                f.write(conteudo)
             
-            arquivo_quantidades = os.path.join(self.logs_dir, f"quantidades_{data_atual}.txt")
-            if not os.path.exists(arquivo_quantidades):
-                with open(arquivo_quantidades, "w", encoding="utf-8") as f:
-                    f.write("NOME,QUANTIDADE,CATEGORIA\n")
-            
-            produto = self.produtos.get(codigo)
-            if produto:
-                with open(arquivo_quantidades, "a", encoding="utf-8") as f:
-                    f.write(f"{produto.nome},{quantidade},{produto.categoria}\n")
+            return True
         except Exception as e:
-            messagebox.showerror("Erro", f"Falha ao registrar log: {e}")
+            messagebox.showerror("Erro", f"Falha ao gerar log: {str(e)}")
+            return False
 
     def cadastrar_produto(self, codigo: str, nome: str, quantidade: str, preco: str, novo: bool, seminovo: bool, categoria: str):
         if codigo in self.produtos:
@@ -93,7 +117,6 @@ class SistemaEstoque:
 
         self.produtos[codigo] = Produto(codigo, nome, quantidade_int, preco_float, novo, seminovo, categoria)
         if self.salvar_estoque():
-            self.registrar_log("CADASTRO", codigo, quantidade_int, "Sistema")
             return True, "Produto cadastrado com sucesso!"
         return False, "Erro ao salvar produto"
 
@@ -107,7 +130,6 @@ class SistemaEstoque:
 
         self.produtos[codigo].quantidade += quantidade_int
         if self.salvar_estoque():
-            self.registrar_log("ENTRADA", codigo, quantidade_int, responsavel)
             return True, f"Entrada de {quantidade_int} unidades registrada para o produto {codigo}"
         return False, "Erro ao registrar entrada"
 
@@ -124,7 +146,6 @@ class SistemaEstoque:
 
         self.produtos[codigo].quantidade -= quantidade_int
         if self.salvar_estoque():
-            self.registrar_log("SAIDA", codigo, quantidade_int, responsavel)
             return True, f"Saída de {quantidade_int} unidades registrada para o produto {codigo}"
         return False, "Erro ao registrar saída"
 
@@ -145,19 +166,13 @@ class LoginWindow:
         main_frame = tk.Frame(self.window, padx=20, pady=20)
         main_frame.pack(expand=True, fill=tk.BOTH)
 
-        tk.Label(main_frame, text="Usuário:").pack(pady=(0, 5))
-        self.usuario_entry = tk.Entry(main_frame)
-        self.usuario_entry.pack(pady=(0, 10))
-
         tk.Label(main_frame, text="Senha:").pack(pady=(0, 5))
         self.senha_entry = tk.Entry(main_frame, show="*")
         self.senha_entry.pack(pady=(0, 15))
 
         tk.Button(main_frame, text="Entrar", command=self.verificar_login).pack(fill=tk.X)
 
-        self.usuario_correto = "1"
         self.senha_correta = "1"
-        self.usuario_entry.focus_set()
 
     def center_window(self):
         self.window.update_idletasks()
@@ -168,14 +183,13 @@ class LoginWindow:
         self.window.geometry(f"{width}x{height}+{x}+{y}")
 
     def verificar_login(self):
-        usuario = self.usuario_entry.get().strip()
         senha = self.senha_entry.get().strip()
 
-        if usuario == self.usuario_correto and senha == self.senha_correta:
+        if senha == self.senha_correta:
             self.window.destroy()
             self.on_login_success()
         else:
-            messagebox.showerror("Erro", "Usuário ou senha incorretos!")
+            messagebox.showerror("Erro", "Senha incorreta!")
             self.senha_entry.delete(0, tk.END)
             self.senha_entry.focus_set()
 
@@ -318,7 +332,7 @@ class AplicativoEstoque:
         btn_frame = tk.Frame(frame)
         btn_frame.pack(fill=tk.X, pady=5)
         tk.Button(btn_frame, text="Atualizar", command=self.atualizar_lista).pack(side=tk.LEFT, padx=5)
-        tk.Button(btn_frame, text="Copiar Log", command=self.copiar_log_quantidades).pack(side=tk.LEFT, padx=5)
+        tk.Button(btn_frame, text="Copiar Log de Produtos", command=self.copiar_log_produtos).pack(side=tk.LEFT, padx=5)
 
     def cadastrar_produto(self):
         codigo = self.codigo_entry.get().strip()
@@ -406,20 +420,23 @@ class AplicativoEstoque:
                 "Sim" if produto.seminovo else "Não"
             ), tags=tags)
 
-    def copiar_log_quantidades(self):
+    def copiar_log_produtos(self):
         try:
+            if not self.sistema.gerar_log_produtos():
+                raise Exception("Não foi possível gerar o log")
+            
             data_atual = datetime.datetime.now().strftime("%Y-%m-%d")
-            arquivo_log = os.path.join(self.sistema.logs_dir, f"quantidades_{data_atual}.txt")
-            if not os.path.exists(arquivo_log):
-                messagebox.showwarning("Aviso", "Nenhum log encontrado para hoje!")
-                return
-            with open(arquivo_log, "r", encoding="utf-8") as f:
+            arquivo_log = os.path.join(self.sistema.logs_dir, f"log_produto_{data_atual}.txt")
+            
+            with open(arquivo_log, "r", encoding='utf-8') as f:
                 conteudo = f.read()
+            
             self.root.clipboard_clear()
             self.root.clipboard_append(conteudo)
-            messagebox.showinfo("Sucesso", "Log de quantidades copiado para a área de transferência!")
+            messagebox.showinfo("Sucesso", "Conteúdo copiado para área de transferência!")
+        
         except Exception as e:
-            messagebox.showerror("Erro", f"Falha ao copiar log: {e}")
+            messagebox.showerror("Erro", f"Falha ao copiar: {str(e)}")
 
 if __name__ == "__main__":
     root = tk.Tk()
