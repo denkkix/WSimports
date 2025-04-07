@@ -3,6 +3,7 @@ import datetime
 import os
 import tkinter as tk
 from tkinter import ttk, messagebox
+from pathlib import Path 
 
 class Produto:
     def __init__(self, codigo: str, nome: str, quantidade: int, preco: float, novo: bool, seminovo: bool, categoria: str):
@@ -16,17 +17,34 @@ class Produto:
 
 class SistemaEstoque:
     def __init__(self):
+        self.diretorio_base = Path(os.path.expanduser("~")) / "ControleEstoqueData"
+        self.diretorio_dados = self.diretorio_base / "dados"
+        self.logs_dir = self.diretorio_base / "logs"
+        self.estoque_path = self.diretorio_dados / "estoque.json" 
+        self.log_quantidades_path = self.logs_dir / "log_quantidades.txt"
+        
+        self._criar_diretorios()
+        
         self.produtos = {}
         self.categorias = ["Apple", "Xiaomi", "Samsung", "Video Games"]
-        self.estoque_path = "estoque.json"
-        self.logs_dir = "logs"
         self.carregar_estoque()
 
+    def _criar_diretorios(self):
+        try:
+            self.diretorio_base.mkdir(parents=True, exist_ok=True)
+            self.diretorio_dados.mkdir(exist_ok=True)
+            self.logs_dir.mkdir(exist_ok=True)
+        except Exception as e:
+            messagebox.showerror("Erro Crítico", 
+                f"Falha ao criar diretórios: {str(e)}\n"
+                f"Verifique as permissões em: {self.diretorio_base}")
+
     def carregar_estoque(self):
-        if os.path.exists(self.estoque_path):
-            try:
+        try:
+            if self.estoque_path.exists():
                 with open(self.estoque_path, "r", encoding="utf-8") as f:
                     dados = json.load(f)
+                    self.produtos = {}
                     for codigo, info in dados.items():
                         self.produtos[codigo] = Produto(
                             codigo,
@@ -37,9 +55,9 @@ class SistemaEstoque:
                             info.get("seminovo", False),
                             info.get("categoria", "")
                         )
-            except Exception as e:
-                messagebox.showerror("Erro", f"Falha ao carregar estoque: {e}")
-                self.produtos = {}
+        except Exception as e:
+            messagebox.showerror("Erro", f"Falha ao carregar estoque: {str(e)}")
+            self.produtos = {}
 
     def salvar_estoque(self) -> bool:
         try:
@@ -57,30 +75,43 @@ class SistemaEstoque:
                 json.dump(dados, f, indent=4, ensure_ascii=False)
             return True
         except Exception as e:
-            messagebox.showerror("Erro", f"Falha ao salvar estoque: {e}")
+            messagebox.showerror("Erro", f"Falha ao salvar estoque: {str(e)}")
+            return False
+
+    def registrar_log_quantidades(self, produto):
+        try:
+            with open(self.log_quantidades_path, "a", encoding="utf-8") as f:
+                status = "ESGOTADO" if produto.quantidade == 0 else f"Estoque: {produto.quantidade}"
+                registro = f"{datetime.datetime.now()} - {produto.nome} ({produto.codigo}) - {status}\n"
+                f.write(registro)
+            return True
+        except Exception as e:
+            messagebox.showerror("Erro", f"Falha ao registrar log: {str(e)}")
             return False
 
     def gerar_log_produtos(self):
         try:
             data_atual = datetime.datetime.now().strftime("%Y-%m-%d")
-            os.makedirs(self.logs_dir, exist_ok=True)
-            arquivo_produtos = os.path.join(self.logs_dir, f"log_produto_{data_atual}.txt")
-        
+            arquivo_log = self.logs_dir / f"log_produto_{data_atual}.txt"
+            
             conteudo = """Pegamos seu usado como parte do pagamento. 📲🔄
 
 Parcelamos em até 18x cartão ou em até 36x no boleto. 💳📄
 
 """
-        
+
             categorias = {
                 "Video Games": [],
                 "Apple": [],
                 "Xiaomi Lacrados": [],
                 "Samsung": []
             }
-        
+
             if self.produtos:
                 for produto in self.produtos.values():
+                    if produto.quantidade <= 0:
+                        continue
+                        
                     if produto.categoria == "Video Games":
                         categorias["Video Games"].append(produto.nome)
                     elif produto.categoria == "Apple":
@@ -89,7 +120,7 @@ Parcelamos em até 18x cartão ou em até 36x no boleto. 💳📄
                         categorias["Xiaomi Lacrados"].append(produto.nome)
                     elif produto.categoria == "Samsung":
                         categorias["Samsung"].append(produto.nome)
-            
+
                 for categoria, produtos in categorias.items():
                     if produtos:
                         conteudo += f"⬇ {categoria} ⬇\n\n"
@@ -97,8 +128,8 @@ Parcelamos em até 18x cartão ou em até 36x no boleto. 💳📄
                         conteudo += "\n\n"
             else:
                 conteudo += "⚠ Nenhum produto cadastrado no sistema.\n"
-        
-            with open(arquivo_produtos, "w", encoding='utf-8') as f:
+
+            with open(arquivo_log, "w", encoding="utf-8") as f:
                 f.write(conteudo)
             
             return True
@@ -146,11 +177,14 @@ Parcelamos em até 18x cartão ou em até 36x no boleto. 💳📄
 
         self.produtos[codigo].quantidade -= quantidade_int
         if self.salvar_estoque():
+            if self.produtos[codigo].quantidade == 0:
+                self.registrar_log_quantidades(self.produtos[codigo])
             return True, f"Saída de {quantidade_int} unidades registrada para o produto {codigo}"
         return False, "Erro ao registrar saída"
 
     def listar_produtos(self):
         return list(self.produtos.values())
+    
 
 class LoginWindow:
     def __init__(self, root: tk.Tk, on_login_success):
@@ -163,14 +197,14 @@ class LoginWindow:
         self.window.resizable(False, False)
         self.center_window()
 
-        main_frame = tk.Frame(self.window, padx=20, pady=20)
-        main_frame.pack(expand=True, fill=tk.BOTH)
+        main_frame = ttk.Frame(self.window)
+        main_frame.pack(expand=True, fill=tk.BOTH, padx=20, pady=20)
 
-        tk.Label(main_frame, text="Senha:").pack(pady=(0, 5))
-        self.senha_entry = tk.Entry(main_frame, show="*")
+        ttk.Label(main_frame, text="Senha:").pack(pady=(0, 5))
+        self.senha_entry = ttk.Entry(main_frame, show="*")
         self.senha_entry.pack(pady=(0, 15))
 
-        tk.Button(main_frame, text="Entrar", command=self.verificar_login).pack(fill=tk.X)
+        ttk.Button(main_frame, text="Entrar", command=self.verificar_login).pack(fill=tk.X)
 
         self.senha_correta = "1"
 
@@ -184,36 +218,168 @@ class LoginWindow:
 
     def verificar_login(self):
         senha = self.senha_entry.get().strip()
-
         if senha == self.senha_correta:
             self.window.destroy()
             self.on_login_success()
         else:
             messagebox.showerror("Erro", "Senha incorreta!")
-            self.senha_entry.delete(0, tk.END)
-            self.senha_entry.focus_set()
+            self.senha_entry.delete(0, 'end')
+            self.senha_entry.focus()
 
 class AplicativoEstoque:
     def __init__(self, root: tk.Tk):
+        # Configuração de cores
+        self.cor_fundo = "#1a1a1a"
+        self.cor_texto = "#e0e0e0"
+        self.cor_destaque = "#2d8ceb"
+        self.cor_widgets = "#2d2d2d"
+        self.cor_borda = "#404040"
+        self.cor_tree = "#363636"
+        self.cor_abas = "333333"
+        
         self.root = root
         self.sistema = SistemaEstoque()
+        
+        self._configurar_tema()
+        self._configurar_janela_principal()
+        self.show_login()
 
-        self.root.title("Sistema de Controle de Estoque")
+    def _configurar_tema(self):
+        """Configura o tema escuro em todos os componentes"""
+        self.style = ttk.Style()
+        self.style.theme_use('clam')
+
+        self.cor_abas_inativas = "#333333"    # Cinza médio
+        self.cor_abas_ativas = "#2d8ceb"      # Azul destacado
+        self.cor_borda_abas = "#555555"       # Borda mais visível
+        self.cor_texto_abas = "#e0e0e0"
+        self.cor_texto = "#ffffff"  # Branco puro para melhor visibilidade
+        self.cor_destaque = "#2d8ceb"  # Azul destacado para itens selecionados
+        self.cor_widgets = "#2d2d2d"  # Fundo escuro dos widgets
+        
+        # Configurações gerais
+        self.style.configure('.', 
+                       background=self.cor_fundo,
+                       foreground=self.cor_texto,
+                       font=('Arial', 10),
+                       borderwidth=0)
+    
+        # Configuração do Notebook
+        self.style.configure('TNotebook', 
+                    background=self.cor_fundo,
+                    borderwidth=0)
+        
+        # Configuração das abas - estilo mais destacado
+        self.style.configure('TNotebook.Tab', 
+                        background=self.cor_abas_inativas,
+                        foreground=self.cor_texto_abas,
+                        borderwidth=1,
+                        bordercolor=self.cor_borda_abas,
+                        padding=[15, 5],  # Padding horizontal e vertical
+                        font=('Arial', 10, 'bold'))
+        
+        self.style.map('TNotebook.Tab',
+                    background=[('selected', self.cor_abas_ativas),
+                            ('active', self.cor_abas_ativas),
+                            ('!selected', self.cor_abas_inativas)],
+                    foreground=[('selected', 'white'),
+                            ('active', 'white'),
+                            ('!selected', self.cor_texto_abas)],
+                    relief=[('selected', 'raised'),
+                        ('active', 'sunken'),
+                        ('!selected', 'flat')],
+                    lightcolor=[('selected', self.cor_abas_ativas)],
+                    darkcolor=[('selected', self.cor_abas_ativas)])
+            
+        # Frames
+        self.style.configure('TFrame', 
+                           background=self.cor_fundo,
+                           borderwidth=1,
+                           relief='solid',
+                           bordercolor=self.cor_borda)
+        
+        # Botões
+        self.style.configure('TButton',
+                           background=self.cor_widgets,
+                           foreground=self.cor_texto,
+                           borderwidth=1,
+                           bordercolor=self.cor_borda,
+                           focusthickness=0)
+        self.style.map('TButton',
+                     background=[('active', self.cor_destaque),
+                                 ('pressed', self.cor_destaque)],
+                     foreground=[('active', self.cor_texto),
+                                 ('pressed', self.cor_texto)])
+        
+        # Entradas
+        self.style.configure('TEntry',
+                           fieldbackground=self.cor_widgets,
+                           bordercolor=self.cor_borda,
+                           insertcolor=self.cor_texto,
+                           lightcolor=self.cor_borda,
+                           darkcolor=self.cor_borda)
+        
+        # Combobox
+        self.style.configure('TCombobox',
+                       fieldbackground=self.cor_widgets,
+                       background=self.cor_widgets,
+                       foreground=self.cor_texto,  # Texto visível
+                       selectbackground=self.cor_destaque,  # Fundo do item selecionado
+                       selectforeground='white',  # Texto do item selecionado
+                       arrowcolor=self.cor_texto,  # Cor da seta
+                       bordercolor=self.cor_borda,
+                       lightcolor=self.cor_borda,
+                       darkcolor=self.cor_borda,
+                       padding=5)  # Espaçamento interno
+
+        self.style.map('TCombobox',
+                    fieldbackground=[('readonly', self.cor_widgets)],
+                    background=[('readonly', self.cor_widgets)],
+                    foreground=[('readonly', self.cor_texto)],
+                    selectbackground=[('readonly', self.cor_destaque)],
+                    selectforeground=[('readonly', 'white')])
+            
+        # Treeview
+        self.style.configure('Treeview',
+                           background=self.cor_tree,
+                           fieldbackground=self.cor_tree,
+                           foreground=self.cor_texto,
+                           borderwidth=0,
+                           rowheight=30)
+        self.style.configure('Treeview.Heading',
+                           background=self.cor_borda,
+                           foreground=self.cor_texto,
+                           relief='flat',
+                           borderwidth=1,
+                           bordercolor=self.cor_borda)
+        self.style.map('Treeview.Heading',
+                     background=[('active', self.cor_destaque)])
+        
+        # Scrollbars
+        self.style.configure('Vertical.TScrollbar',
+                           background=self.cor_widgets,
+                           troughcolor=self.cor_fundo,
+                           bordercolor=self.cor_borda)
+        self.style.configure('Horizontal.TScrollbar',
+                           background=self.cor_widgets,
+                           troughcolor=self.cor_fundo,
+                           bordercolor=self.cor_borda)
+
+    def _configurar_janela_principal(self):
+        """Configura elementos visuais da janela principal"""
+        self.root.title("Controle de Estoque - Dark Mode")
         self.root.geometry("1100x750")
+        self.root.configure(bg=self.cor_fundo)
         self.center_window()
 
-        self.style = ttk.Style()
-        self.style.theme_use("clam")
-        self.style.configure("Treeview", rowheight=30, font=("Arial", 10))
-        self.style.configure("Treeview.Heading", font=("Arial", 10, "bold"))
-
     def center_window(self):
+        """Centraliza a janela principal na tela"""
         self.root.update_idletasks()
         width = self.root.winfo_width()
         height = self.root.winfo_height()
         x = (self.root.winfo_screenwidth() // 2) - (width // 2)
         y = (self.root.winfo_screenheight() // 2) - (height // 2)
-        self.root.geometry(f"{width}x{height}+{x}+{y}")
+        self.root.geometry(f'{width}x{height}+{x}+{y}')
 
     def show_login(self):
         self.root.withdraw()
@@ -221,62 +387,81 @@ class AplicativoEstoque:
 
     def init_ui(self):
         self.root.deiconify()
-        self.notebook = ttk.Notebook(self.root)
+        self.notebook = ttk.Notebook(self.root, style='TNotebook')
         self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
         self.criar_aba_cadastro()
         self.criar_aba_movimentacao()
         self.criar_aba_consulta()
         self.atualizar_lista()
 
+        self.style.theme_use('clam')  
+        self.notebook.update_idletasks()
+
     def criar_aba_cadastro(self):
-        frame = tk.Frame(self.notebook, padx=20, pady=20)
-        self.notebook.add(frame, text="Cadastro de Produtos")
-
+        frame = ttk.Frame(self.notebook)
+        self.notebook.add(frame, text="Cadastro")
+        
+        frame.columnconfigure(1, weight=1)
+        
         campos = [
-            ("Código:", "codigo_entry"),
-            ("Nome:", "nome_entry"),
-            ("Quantidade:", "quantidade_entry"),
-            ("Preço:", "preco_entry")
+            ("Código:", 0, 'codigo_entry'),
+            ("Nome:", 1, 'nome_entry'),
+            ("Quantidade:", 2, 'quantidade_entry'),
+            ("Preço:", 3, 'preco_entry')
         ]
-        for i, (label_text, var_name) in enumerate(campos):
-            tk.Label(frame, text=label_text).grid(row=i, column=0, padx=5, pady=5, sticky=tk.W)
-            entry = tk.Entry(frame)
-            entry.grid(row=i, column=1, padx=5, pady=5, sticky=tk.EW)
-            setattr(self, var_name, entry)
+        
+        for texto, linha, nome in campos:
+            lbl = ttk.Label(frame, text=texto)
+            lbl.grid(row=linha, column=0, padx=5, pady=5, sticky='w')
+            
+            entry = ttk.Entry(frame)
+            entry.grid(row=linha, column=1, padx=5, pady=5, sticky='ew')
+            setattr(self, nome, entry)
 
-        tk.Label(frame, text="Categoria:").grid(row=4, column=0, padx=5, pady=5, sticky=tk.W)
+        lbl_categoria = ttk.Label(frame, text="Categoria:")
+        lbl_categoria.grid(row=4, column=0, padx=5, pady=5, sticky='w')
+        
         self.categoria_var = tk.StringVar()
         self.categoria_combobox = ttk.Combobox(
             frame,
             textvariable=self.categoria_var,
             values=self.sistema.categorias,
-            state="readonly"
+            state='readonly',
+            style='TCombobox'
         )
-        self.categoria_combobox.grid(row=4, column=1, padx=5, pady=5, sticky=tk.EW)
+        self.categoria_combobox.grid(row=4, column=1, padx=5, pady=5, sticky='ew')
         self.categoria_combobox.set("Selecione")
 
         self.novo_var = tk.BooleanVar()
-        tk.Checkbutton(frame, text="Novo", variable=self.novo_var).grid(row=5, column=0, padx=5, pady=5, sticky=tk.W)
+        chk_novo = ttk.Checkbutton(frame, text="Novo", variable=self.novo_var)
+        chk_novo.grid(row=5, column=0, padx=5, pady=5, sticky='w')
+        
         self.seminovo_var = tk.BooleanVar()
-        tk.Checkbutton(frame, text="Semi-novo", variable=self.seminovo_var).grid(row=5, column=1, padx=5, pady=5, sticky=tk.W)
+        chk_seminovo = ttk.Checkbutton(frame, text="Semi-novo", variable=self.seminovo_var)
+        chk_seminovo.grid(row=5, column=1, padx=5, pady=5, sticky='w')
 
-        tk.Button(frame, text="Cadastrar", command=self.cadastrar_produto).grid(row=6, column=0, columnspan=2, pady=10, sticky=tk.EW)
-        frame.columnconfigure(1, weight=1)
+        btn_cadastrar = ttk.Button(frame, text="Cadastrar", command=self.cadastrar_produto)
+        btn_cadastrar.grid(row=6, column=0, columnspan=2, pady=10, sticky='ew')
 
     def criar_aba_movimentacao(self):
-        frame = tk.Frame(self.notebook, padx=20, pady=20)
+        frame = ttk.Frame(self.notebook)
         self.notebook.add(frame, text="Movimentação")
-
-        entrada_frame = tk.LabelFrame(frame, text="Entrada no Estoque", padx=10, pady=10)
+        
+        entrada_frame = ttk.LabelFrame(frame, text=" Entrada no Estoque ")
         entrada_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         self._add_movimentacao_fields(entrada_frame, "entrada")
-        tk.Button(entrada_frame, text="Registrar Entrada", command=self.registrar_entrada).grid(row=3, column=0, columnspan=2, pady=5, sticky=tk.EW)
-
-        saida_frame = tk.LabelFrame(frame, text="Saída do Estoque", padx=10, pady=10)
+        
+        ttk.Button(entrada_frame, text="Registrar Entrada", command=self.registrar_entrada
+                  ).grid(row=3, column=0, columnspan=2, pady=5, sticky='ew')
+        
+        saida_frame = ttk.LabelFrame(frame, text=" Saída do Estoque ")
         saida_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
         self._add_movimentacao_fields(saida_frame, "saida")
-        tk.Button(saida_frame, text="Registrar Saída", command=self.registrar_saida).grid(row=3, column=0, columnspan=2, pady=5, sticky=tk.EW)
-
+        
+        ttk.Button(saida_frame, text="Registrar Saída", command=self.registrar_saida
+                  ).grid(row=3, column=0, columnspan=2, pady=5, sticky='ew')
+        
         frame.columnconfigure(0, weight=1)
 
     def _add_movimentacao_fields(self, parent, prefix: str):
@@ -285,54 +470,85 @@ class AplicativoEstoque:
             ("Quantidade:", f"{prefix}_quantidade"),
             ("Responsável:", f"{prefix}_responsavel")
         ]
+        
         for i, (label_text, var_name) in enumerate(campos):
-            tk.Label(parent, text=label_text).grid(row=i, column=0, padx=5, pady=5, sticky=tk.W)
-            entry = tk.Entry(parent)
-            entry.grid(row=i, column=1, padx=5, pady=5, sticky=tk.EW)
+            lbl = ttk.Label(parent, text=label_text)
+            lbl.grid(row=i, column=0, padx=5, pady=5, sticky='w')
+            
+            entry = ttk.Entry(parent)
+            entry.grid(row=i, column=1, padx=5, pady=5, sticky='ew')
             setattr(self, var_name, entry)
+        
         parent.columnconfigure(1, weight=1)
 
     def criar_aba_consulta(self):
-        frame = tk.Frame(self.notebook)
-        self.notebook.add(frame, text="Consulta de Estoque", padding=10)
-        container = tk.Frame(frame)
-        container.pack(fill=tk.BOTH, expand=True)
+        """Cria a aba de consulta de estoque com tabela dimensionada corretamente"""
+        frame = ttk.Frame(self.notebook)
+        self.notebook.add(frame, text="Consulta")
+        
+        container = ttk.Frame(frame)
+        container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        scroll_y = ttk.Scrollbar(container, orient="vertical")
-        scroll_x = ttk.Scrollbar(container, orient="horizontal")
+        # Treeview
         self.tree = ttk.Treeview(
             container,
             columns=("Codigo", "Nome", "Quantidade", "Preco", "Categoria", "Novo", "SemiNovo"),
             show="headings",
-            yscrollcommand=scroll_y.set,
-            xscrollcommand=scroll_x.set
+            style='Treeview'
         )
-        scroll_y.config(command=self.tree.yview)
-        scroll_x.config(command=self.tree.xview)
-
+        
+        # Configurar colunas
         colunas = [
-            ("Codigo", 100, tk.CENTER),
-            ("Nome", 200, tk.W),
-            ("Quantidade", 80, tk.CENTER),
-            ("Preco", 80, tk.E),
-            ("Categoria", 100, tk.CENTER),
-            ("Novo", 60, tk.CENTER),
-            ("SemiNovo", 80, tk.CENTER)
+            ("Codigo", 120, 'center'),
+            ("Nome", 250, 'w'),
+            ("Quantidade", 100, 'center'),
+            ("Preco", 150, 'e'),
+            ("Categoria", 150, 'center'),
+            ("Novo", 80, 'center'),
+            ("SemiNovo", 100, 'center')
         ]
+        
         for heading, width, anchor in colunas:
             self.tree.heading(heading, text=heading)
-            self.tree.column(heading, width=width, anchor=anchor)
+            self.tree.column(heading, width=width, anchor=anchor, stretch=False)
+        
+        # Scrollbars
+        vsb = ttk.Scrollbar(container, orient="vertical", command=self.tree.yview, style='Vertical.TScrollbar')
+        hsb = ttk.Scrollbar(container, orient="horizontal", command=self.tree.xview, style='Horizontal.TScrollbar')
+        self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+        
+        # Layout
+        self.tree.grid(row=0, column=0, sticky='nsew')
+        vsb.grid(row=0, column=1, sticky='ns')
+        hsb.grid(row=1, column=0, sticky='ew')
+        
+        # Configurar expansão
+        container.grid_rowconfigure(0, weight=1)
+        container.grid_columnconfigure(0, weight=1)
+        
+        # Botões inferiores
+        btn_frame = ttk.Frame(frame)
+        btn_frame.pack(fill=tk.X, pady=5, padx=5)
+        
+        botoes = [
+            ("Atualizar", self.atualizar_lista),
+            ("Copiar Log", self.copiar_log_produtos),
+            ("Excluir", self.excluir_produto),
+            ("Editar Preço", self.abrir_edicao_preco)
+        ]
+        
+        for texto, comando in botoes:
+            btn = ttk.Button(
+                btn_frame,
+                text=texto,
+                command=comando,
+                style='TButton'
+            )
+            btn.pack(side=tk.LEFT, padx=5, expand=True, fill=tk.X)
 
-        scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
-        scroll_x.pack(side=tk.BOTTOM, fill=tk.X)
-        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.tree.tag_configure('estoque_zero', background='#ffdddd')
-        self.tree.tag_configure('estoque_baixo', background='#fff3cd')
-
-        btn_frame = tk.Frame(frame)
-        btn_frame.pack(fill=tk.X, pady=5)
-        tk.Button(btn_frame, text="Atualizar", command=self.atualizar_lista).pack(side=tk.LEFT, padx=5)
-        tk.Button(btn_frame, text="Copiar Log de Produtos", command=self.copiar_log_produtos).pack(side=tk.LEFT, padx=5)
+        # Tags para estoque
+        self.tree.tag_configure('estoque_zero', background='#542626')
+        self.tree.tag_configure('estoque_baixo', background='#4a3c1a')
 
     def cadastrar_produto(self):
         codigo = self.codigo_entry.get().strip()
@@ -350,12 +566,13 @@ class AplicativoEstoque:
         sucesso, mensagem = self.sistema.cadastrar_produto(
             codigo, nome, quantidade, preco, novo, seminovo, categoria
         )
+        
         if sucesso:
             messagebox.showinfo("Sucesso", mensagem)
-            self.codigo_entry.delete(0, tk.END)
-            self.nome_entry.delete(0, tk.END)
-            self.quantidade_entry.delete(0, tk.END)
-            self.preco_entry.delete(0, tk.END)
+            self.codigo_entry.delete(0, 'end')
+            self.nome_entry.delete(0, 'end')
+            self.quantidade_entry.delete(0, 'end')
+            self.preco_entry.delete(0, 'end')
             self.categoria_combobox.set("Selecione")
             self.novo_var.set(False)
             self.seminovo_var.set(False)
@@ -373,11 +590,12 @@ class AplicativoEstoque:
             return
 
         sucesso, mensagem = self.sistema.entrada_estoque(codigo, quantidade, responsavel)
+        
         if sucesso:
             messagebox.showinfo("Sucesso", mensagem)
-            self.entrada_codigo.delete(0, tk.END)
-            self.entrada_quantidade.delete(0, tk.END)
-            self.entrada_responsavel.delete(0, tk.END)
+            self.entrada_codigo.delete(0, 'end')
+            self.entrada_quantidade.delete(0, 'end')
+            self.entrada_responsavel.delete(0, 'end')
             self.atualizar_lista()
         else:
             messagebox.showerror("Erro", mensagem)
@@ -392,11 +610,12 @@ class AplicativoEstoque:
             return
 
         sucesso, mensagem = self.sistema.saida_estoque(codigo, quantidade, responsavel)
+        
         if sucesso:
             messagebox.showinfo("Sucesso", mensagem)
-            self.saida_codigo.delete(0, tk.END)
-            self.saida_quantidade.delete(0, tk.END)
-            self.saida_responsavel.delete(0, tk.END)
+            self.saida_codigo.delete(0, 'end')
+            self.saida_quantidade.delete(0, 'end')
+            self.saida_responsavel.delete(0, 'end')
             self.atualizar_lista()
         else:
             messagebox.showerror("Erro", mensagem)
@@ -407,10 +626,11 @@ class AplicativoEstoque:
         for produto in self.sistema.listar_produtos():
             tags = []
             if produto.quantidade == 0:
-                tags.append("estoque_zero")
+                tags.append('estoque_zero')
             elif produto.quantidade < 5:
-                tags.append("estoque_baixo")
-            self.tree.insert("", tk.END, values=(
+                tags.append('estoque_baixo')
+                
+            self.tree.insert('', 'end', values=(
                 produto.codigo,
                 produto.nome,
                 produto.quantidade,
@@ -422,24 +642,102 @@ class AplicativoEstoque:
 
     def copiar_log_produtos(self):
         try:
-            if not self.sistema.gerar_log_produtos():
-                raise Exception("Não foi possível gerar o log")
-            
-            data_atual = datetime.datetime.now().strftime("%Y-%m-%d")
-            arquivo_log = os.path.join(self.sistema.logs_dir, f"log_produto_{data_atual}.txt")
-            
-            with open(arquivo_log, "r", encoding='utf-8') as f:
-                conteudo = f.read()
-            
-            self.root.clipboard_clear()
-            self.root.clipboard_append(conteudo)
-            messagebox.showinfo("Sucesso", "Conteúdo copiado para área de transferência!")
-        
+            if self.sistema.gerar_log_produtos():
+                data_atual = datetime.datetime.now().strftime("%Y-%m-%d")
+                arquivo_log = self.sistema.logs_dir / f"log_produto_{data_atual}.txt"
+                
+                with open(arquivo_log, 'r', encoding='utf-8') as f:
+                    conteudo = f.read()
+                
+                self.root.clipboard_clear()
+                self.root.clipboard_append(conteudo)
+                messagebox.showinfo("Sucesso", "Log copiado para área de transferência!")
         except Exception as e:
-            messagebox.showerror("Erro", f"Falha ao copiar: {str(e)}")
+            messagebox.showerror("Erro", f"Falha ao copiar log: {str(e)}")
+
+    def excluir_produto(self):
+        try:
+            item_selecionado = self.tree.selection()
+            if not item_selecionado:
+                messagebox.showwarning("Aviso", "Selecione um produto na tabela!")
+                return
+
+            codigo = self.tree.item(item_selecionado, 'values')[0]
+            if codigo not in self.sistema.produtos:
+                messagebox.showerror("Erro", "Produto não encontrado!")
+                self.atualizar_lista()
+                return
+
+            produto = self.sistema.produtos[codigo]
+            confirmacao = messagebox.askyesno(
+                "Confirmar Exclusão",
+                f"Tem certeza que deseja excluir permanentemente?\n\n"
+                f"Código: {codigo}\n"
+                f"Nome: {produto.nome}\n"
+                f"Quantidade: {produto.quantidade} unidades"
+            )
+            
+            if confirmacao:
+                del self.sistema.produtos[codigo]
+                if self.sistema.salvar_estoque():
+                    self.atualizar_lista()
+                    messagebox.showinfo("Sucesso", "Produto excluído com sucesso!")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Falha ao excluir: {str(e)}")
+            self.atualizar_lista()
+
+    def abrir_edicao_preco(self):
+        try:
+            item_selecionado = self.tree.selection()
+            if not item_selecionado:
+                messagebox.showwarning("Aviso", "Selecione um produto na tabela!")
+                return
+
+            codigo = self.tree.item(item_selecionado, 'values')[0]
+            if codigo not in self.sistema.produtos:
+                messagebox.showerror("Erro", "Produto não encontrado!")
+                self.atualizar_lista()
+                return
+
+            produto = self.sistema.produtos[codigo]
+            
+            self.janela_edicao = tk.Toplevel(self.root)
+            self.janela_edicao.title(f"Editar Preço - {produto.nome}")
+            self.janela_edicao.geometry("300x150")
+            
+            frame_edicao = ttk.Frame(self.janela_edicao)
+            frame_edicao.pack(padx=20, pady=20, fill='both', expand=True)
+            
+            ttk.Label(frame_edicao, text=f"Preço atual: R$ {produto.preco:.2f}").pack(pady=5)
+            ttk.Label(frame_edicao, text="Novo preço:").pack()
+            
+            self.novo_preco = ttk.Entry(frame_edicao)
+            self.novo_preco.pack(pady=5)
+            self.novo_preco.insert(0, f"{produto.preco:.2f}")
+            
+            ttk.Button(
+                frame_edicao,
+                text="Atualizar",
+                command=lambda: self.atualizar_preco(codigo)
+            ).pack(pady=10)
+            
+        except Exception as e:
+            messagebox.showerror("Erro", f"Falha ao editar: {str(e)}")
+
+    def atualizar_preco(self, codigo):
+        try:
+            novo_preco = float(self.novo_preco.get().replace(',', '.'))
+            self.sistema.produtos[codigo].preco = novo_preco
+            if self.sistema.salvar_estoque():
+                self.janela_edicao.destroy()
+                self.atualizar_lista()
+                messagebox.showinfo("Sucesso", "Preço atualizado com sucesso!")
+        except ValueError:
+            messagebox.showerror("Erro", "Digite um valor numérico válido!")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Falha ao atualizar: {str(e)}")
 
 if __name__ == "__main__":
     root = tk.Tk()
     app = AplicativoEstoque(root)
-    app.show_login()
     root.mainloop()
