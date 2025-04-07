@@ -3,3 +3,8 @@
 logs
 *.json
 script estoques/*.py
+build  
+ControleEstoque.spec
+setup.py
+TODO.txt
+img
