@@ -1,8 +1,6 @@
-import json
-import datetime
-import os
+import json, os, datetime
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, PhotoImage
 from pathlib import Path 
 
 class Produto:
@@ -185,7 +183,6 @@ Parcelamos em até 18x cartão ou em até 36x no boleto. 💳📄
     def listar_produtos(self):
         return list(self.produtos.values())
     
-
 class LoginWindow:
     def __init__(self, root: tk.Tk, on_login_success):
         self.root = root
@@ -228,7 +225,6 @@ class LoginWindow:
 
 class AplicativoEstoque:
     def __init__(self, root: tk.Tk):
-        # Configuração de cores
         self.cor_fundo = "#1a1a1a"
         self.cor_texto = "#e0e0e0"
         self.cor_destaque = "#2d8ceb"
@@ -238,24 +234,22 @@ class AplicativoEstoque:
         self.cor_abas = "333333"
         
         self.root = root
-        self.sistema = SistemaEstoque()
-        
-        self._configurar_tema()
-        self._configurar_janela_principal()
+        self._configurar_janela_principal()  
+        self._configurar_tema()              
+        self.sistema = SistemaEstoque()           
         self.show_login()
 
     def _configurar_tema(self):
-        """Configura o tema escuro em todos os componentes"""
         self.style = ttk.Style()
         self.style.theme_use('clam')
 
-        self.cor_abas_inativas = "#333333"    # Cinza médio
-        self.cor_abas_ativas = "#2d8ceb"      # Azul destacado
-        self.cor_borda_abas = "#555555"       # Borda mais visível
+        self.cor_abas_inativas = "#333333"   
+        self.cor_abas_ativas = "#2d8ceb"      
+        self.cor_borda_abas = "#555555"      
         self.cor_texto_abas = "#e0e0e0"
-        self.cor_texto = "#ffffff"  # Branco puro para melhor visibilidade
-        self.cor_destaque = "#2d8ceb"  # Azul destacado para itens selecionados
-        self.cor_widgets = "#2d2d2d"  # Fundo escuro dos widgets
+        self.cor_texto = "#ffffff"  
+        self.cor_destaque = "#2d8ceb"  
+        self.cor_widgets = "#2d2d2d"  
         
         # Configurações gerais
         self.style.configure('.', 
@@ -269,13 +263,13 @@ class AplicativoEstoque:
                     background=self.cor_fundo,
                     borderwidth=0)
         
-        # Configuração das abas - estilo mais destacado
+        # Configuração das abas
         self.style.configure('TNotebook.Tab', 
                         background=self.cor_abas_inativas,
                         foreground=self.cor_texto_abas,
                         borderwidth=1,
                         bordercolor=self.cor_borda_abas,
-                        padding=[15, 5],  # Padding horizontal e vertical
+                        padding=[15, 5], 
                         font=('Arial', 10, 'bold'))
         
         self.style.map('TNotebook.Tab',
@@ -323,14 +317,14 @@ class AplicativoEstoque:
         self.style.configure('TCombobox',
                        fieldbackground=self.cor_widgets,
                        background=self.cor_widgets,
-                       foreground=self.cor_texto,  # Texto visível
-                       selectbackground=self.cor_destaque,  # Fundo do item selecionado
-                       selectforeground='white',  # Texto do item selecionado
-                       arrowcolor=self.cor_texto,  # Cor da seta
+                       foreground=self.cor_texto,  
+                       selectbackground=self.cor_destaque,  
+                       selectforeground='white',  
+                       arrowcolor=self.cor_texto,  
                        bordercolor=self.cor_borda,
                        lightcolor=self.cor_borda,
                        darkcolor=self.cor_borda,
-                       padding=5)  # Espaçamento interno
+                       padding=5)  
 
         self.style.map('TCombobox',
                     fieldbackground=[('readonly', self.cor_widgets)],
@@ -366,14 +360,12 @@ class AplicativoEstoque:
                            bordercolor=self.cor_borda)
 
     def _configurar_janela_principal(self):
-        """Configura elementos visuais da janela principal"""
-        self.root.title("Controle de Estoque - Dark Mode")
+        self.root.title("Controle de Estoque")
         self.root.geometry("1100x750")
         self.root.configure(bg=self.cor_fundo)
         self.center_window()
 
     def center_window(self):
-        """Centraliza a janela principal na tela"""
         self.root.update_idletasks()
         width = self.root.winfo_width()
         height = self.root.winfo_height()
