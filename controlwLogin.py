@@ -24,7 +24,24 @@ class SistemaEstoque:
         self._criar_diretorios()
         
         self.produtos = {}
-        self.categorias = ["Apple", "Xiaomi", "Samsung", "Video Games"]
+        self.categorias = {
+            "Apple": [
+                "Acessórios",
+                "Mais antigos",
+                "iPhone 8 & Plus",
+                "iPhone X | XR | XS | XS Max",
+                "iPhone 11 | Pro | Pro Max",
+                "iPhone SE (2.ª geração) | (3.ª geração)",
+                "iPhone 12 | Mini | Pro | Pro Max",
+                "iPhone 13 | Mini | Pro | Pro Max",
+                "iPhone 14 | Plus | Pro | Pro Max",
+                "iPhone 15 | Plus | Pro | Pro Max",
+                "iPhone 16 | Plus | Pro | Pro Max | 16E"
+            ],
+            "Xiaomi": [],
+            "Samsung": [],
+            "Video Games": []
+        }
         self.carregar_estoque()
 
     def _criar_diretorios(self):
@@ -94,13 +111,28 @@ class SistemaEstoque:
             
             conteudo = """Pegamos seu usado como parte do pagamento. 📲🔄
 
-Parcelamos em até 18x cartão ou em até 36x no boleto. 💳📄
+    Parcelamos em até 18x cartão ou em até 36x no boleto. 💳📄
 
-"""
+    """
+
+            
+            ordem_apple = [
+                "Acessórios",
+                "Mais antigos",
+                "iPhone 8 & Plus",
+                "iPhone X | XR | XS | XS Max",
+                "iPhone 11 | Pro | Pro Max",
+                "iPhone SE (2.ª geração) | (3.ª geração)",
+                "iPhone 12 | Mini | Pro | Pro Max",
+                "iPhone 13 | Mini | Pro | Pro Max",
+                "iPhone 14 | Plus | Pro | Pro Max",
+                "iPhone 15 | Plus | Pro | Pro Max",
+                "iPhone 16 | Plus | Pro | Pro Max | 16E"
+            ]
 
             categorias = {
                 "Video Games": [],
-                "Apple": [],
+                "Apple": {subcat: [] for subcat in ordem_apple},
                 "Xiaomi Lacrados": [],
                 "Samsung": []
             }
@@ -110,17 +142,26 @@ Parcelamos em até 18x cartão ou em até 36x no boleto. 💳📄
                     if produto.quantidade <= 0:
                         continue
                         
-                    if produto.categoria == "Video Games":
+                    if produto.categoria in categorias["Apple"]:
+                        categorias["Apple"][produto.categoria].append(produto.nome)
+                    elif produto.categoria == "Video Games":
                         categorias["Video Games"].append(produto.nome)
-                    elif produto.categoria == "Apple":
-                        categorias["Apple"].append(produto.nome)
                     elif produto.categoria == "Xiaomi":
                         categorias["Xiaomi Lacrados"].append(produto.nome)
                     elif produto.categoria == "Samsung":
                         categorias["Samsung"].append(produto.nome)
 
-                for categoria, produtos in categorias.items():
+                conteudo += "⬇ Apple ⬇\n\n"
+                for subcategoria in ordem_apple:
+                    produtos = categorias["Apple"][subcategoria]
                     if produtos:
+                        conteudo += f"• {subcategoria}:\n"
+                        conteudo += "\n".join(f"  - {produto}" for produto in produtos)
+                        conteudo += "\n\n"
+
+                # Adiciona outras categorias
+                for categoria, produtos in categorias.items():
+                    if categoria != "Apple" and produtos:
                         conteudo += f"⬇ {categoria} ⬇\n\n"
                         conteudo += "\n".join(f"- {produto}" for produto in produtos)
                         conteudo += "\n\n"
@@ -382,6 +423,7 @@ class AplicativoEstoque:
         self.notebook = ttk.Notebook(self.root, style='TNotebook')
         self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
+        # Criar todas as abas
         self.criar_aba_cadastro()
         self.criar_aba_movimentacao()
         self.criar_aba_consulta()
@@ -395,6 +437,9 @@ class AplicativoEstoque:
         self.notebook.add(frame, text="Cadastro")
         
         frame.columnconfigure(1, weight=1)
+        
+        # Configurar grid para melhor organização
+        frame.grid_rowconfigure(7, weight=1)  # Permite que os elementos superiores fiquem no topo
         
         campos = [
             ("Código:", 0, 'codigo_entry'),
@@ -411,6 +456,7 @@ class AplicativoEstoque:
             entry.grid(row=linha, column=1, padx=5, pady=5, sticky='ew')
             setattr(self, nome, entry)
 
+        # Categoria principal
         lbl_categoria = ttk.Label(frame, text="Categoria:")
         lbl_categoria.grid(row=4, column=0, padx=5, pady=5, sticky='w')
         
@@ -418,23 +464,54 @@ class AplicativoEstoque:
         self.categoria_combobox = ttk.Combobox(
             frame,
             textvariable=self.categoria_var,
-            values=self.sistema.categorias,
+            values=list(self.sistema.categorias.keys()),
             state='readonly',
             style='TCombobox'
         )
         self.categoria_combobox.grid(row=4, column=1, padx=5, pady=5, sticky='ew')
         self.categoria_combobox.set("Selecione")
+        self.categoria_combobox.bind("<<ComboboxSelected>>", self.atualizar_subcategorias)
 
+        # Subcategoria (inicialmente escondida)
+        self.lbl_subcategoria = ttk.Label(frame, text="Subcategoria:")
+        self.lbl_subcategoria.grid(row=5, column=0, padx=5, pady=5, sticky='w')
+        self.lbl_subcategoria.grid_remove()  # Esconde inicialmente
+        
+        self.subcategoria_var = tk.StringVar()
+        self.subcategoria_combobox = ttk.Combobox(
+            frame,
+            textvariable=self.subcategoria_var,
+            state='readonly',
+            style='TCombobox'
+        )
+        self.subcategoria_combobox.grid(row=5, column=1, padx=5, pady=5, sticky='ew')
+        self.subcategoria_combobox.grid_remove()  # Esconde inicialmente
+
+        # Checkbuttons
         self.novo_var = tk.BooleanVar()
         chk_novo = ttk.Checkbutton(frame, text="Novo", variable=self.novo_var)
-        chk_novo.grid(row=5, column=0, padx=5, pady=5, sticky='w')
+        chk_novo.grid(row=6, column=0, padx=5, pady=5, sticky='w')
         
         self.seminovo_var = tk.BooleanVar()
         chk_seminovo = ttk.Checkbutton(frame, text="Semi-novo", variable=self.seminovo_var)
-        chk_seminovo.grid(row=5, column=1, padx=5, pady=5, sticky='w')
+        chk_seminovo.grid(row=6, column=1, padx=5, pady=5, sticky='w')
 
+        # Botão Cadastrar
         btn_cadastrar = ttk.Button(frame, text="Cadastrar", command=self.cadastrar_produto)
-        btn_cadastrar.grid(row=6, column=0, columnspan=2, pady=10, sticky='ew')
+        btn_cadastrar.grid(row=7, column=0, columnspan=2, pady=10, sticky='ew')
+
+    def atualizar_subcategorias(self, event=None):
+        categoria_selecionada = self.categoria_var.get()
+        
+        if categoria_selecionada == "Apple":
+            self.lbl_subcategoria.grid()
+            self.subcategoria_combobox['values'] = self.sistema.categorias["Apple"]
+            self.subcategoria_combobox.set("Selecione")
+            self.subcategoria_combobox.grid()
+        else:
+            self.subcategoria_var.set("")
+            self.lbl_subcategoria.grid_remove()
+            self.subcategoria_combobox.grid_remove()
 
     def criar_aba_movimentacao(self):
         frame = ttk.Frame(self.notebook)
@@ -550,13 +627,20 @@ class AplicativoEstoque:
         novo = self.novo_var.get()
         seminovo = self.seminovo_var.get()
         categoria = self.categoria_var.get()
+        subcategoria = self.subcategoria_var.get() if categoria == "Apple" else ""
 
         if not all([codigo, nome, quantidade, preco]) or categoria == "Selecione":
             messagebox.showerror("Erro", "Todos os campos são obrigatórios!")
             return
+            
+        if categoria == "Apple" and not subcategoria:
+            messagebox.showerror("Erro", "Selecione uma subcategoria para produtos Apple!")
+            return
+
+        categoria_final = subcategoria if categoria == "Apple" else categoria
 
         sucesso, mensagem = self.sistema.cadastrar_produto(
-            codigo, nome, quantidade, preco, novo, seminovo, categoria
+            codigo, nome, quantidade, preco, novo, seminovo, categoria_final
         )
         
         if sucesso:
@@ -566,6 +650,9 @@ class AplicativoEstoque:
             self.quantidade_entry.delete(0, 'end')
             self.preco_entry.delete(0, 'end')
             self.categoria_combobox.set("Selecione")
+            self.subcategoria_var.set("")
+            self.subcategoria_combobox.grid_remove()
+            self.lbl_subcategoria.grid_remove()
             self.novo_var.set(False)
             self.seminovo_var.set(False)
             self.atualizar_lista()

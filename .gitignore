@@ -6,5 +6,5 @@ script estoques/*.py
 build  
 ControleEstoque.spec
 setup.py
-TODO.txt
+*.txt
 img
