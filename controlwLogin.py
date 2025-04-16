@@ -25,22 +25,68 @@ class SistemaEstoque:
         
         self.produtos = {}
         self.categorias = {
-            "Apple": [
-                "Acessórios",
-                "Mais antigos",
-                "iPhone 8 & Plus",
-                "iPhone X | XR | XS | XS Max",
-                "iPhone 11 | Pro | Pro Max",
-                "iPhone SE (2.ª geração) | (3.ª geração)",
-                "iPhone 12 | Mini | Pro | Pro Max",
-                "iPhone 13 | Mini | Pro | Pro Max",
-                "iPhone 14 | Plus | Pro | Pro Max",
-                "iPhone 15 | Plus | Pro | Pro Max",
-                "iPhone 16 | Plus | Pro | Pro Max | 16E"
+            "APPLE": [
+            "ACESSÓRIOS",
+            "IPAD",
+            "APPLE WATCH",
+            "MAIS ANTIGOS",
+            "IPHONE 8 & PLUS",
+            "IPHONE X | XR | XS | XS MAX",
+            "IPHONE 11 | PRO | PRO MAX",
+            "IPHONE SE (2.ª GERAÇÃO) | (3.ª GERAÇÃO)",
+            "IPHONE 12 | MINI | PRO | PRO MAX",
+            "IPHONE 13 | MINI | PRO | PRO MAX",
+            "IPHONE 14 | PLUS | PRO | PRO MAX",
+            "IPHONE 15 | PLUS | PRO | PRO MAX",
+            "IPHONE 16 | PLUS | PRO | PRO MAX | 16E"
             ],
-            "Xiaomi": [],
-            "Samsung": [],
-            "Video Games": []
+            "XIAOMI": [
+            "SMARTWATCH", 
+            "FONE", 
+            "POCO M", 
+            "POCO F", 
+            "POCO X",
+            "REDMI A", 
+            "REDMI 8", 
+            "REDMI 9", 
+            "REDMI 10",
+            "REDMI 12", 
+            "REDMI 13", 
+            "REDMI 14", 
+            "NOTE 7",
+            "NOTE 8", 
+            "NOTE 9", 
+            "NOTE 10", 
+            "NOTE 11 & PRO",
+            "NOTE 12 & PRO", 
+            "NOTE 13 & PRO", 
+            "NOTE 14 & PRO",
+            "11 LITE", 
+            "12 LITE", 
+            "13 LITE", 
+            "REDMI PAD"
+            ],
+            "MOTOROLA": [
+            "MOTO E6", 
+            "MOTO E7"
+            ],
+            "SAMSUNG": [
+            "GALAXY A",
+            "GALAXY M", 
+            "GALAXY S"
+            ],
+            "REALME": [
+            "REALME C", 
+            "REALME NOTE"
+            ],
+            "VIDEO GAMES": [
+            "PLAYSTATION 3",
+            "PLAYSTATION 4", 
+            "XBOX 360",
+            "XBOX ONE", 
+            "XBOX S & X",
+            "NINTENDO"
+            ]
         }
         self.carregar_estoque()
 
@@ -111,61 +157,44 @@ class SistemaEstoque:
             
             conteudo = """Pegamos seu usado como parte do pagamento. 📲🔄
 
-    Parcelamos em até 18x cartão ou em até 36x no boleto. 💳📄
+Parcelamos em até 18x cartão ou em até 36x no boleto. 💳📄
 
-    """
+"""
+            # Organiza produtos por categoria/subcategoria
+            produtos_por_categoria = {categoria: {subcat: [] for subcat in subcategorias} 
+                                    for categoria, subcategorias in self.categorias.items()}
 
-            
-            ordem_apple = [
-                "Acessórios",
-                "Mais antigos",
-                "iPhone 8 & Plus",
-                "iPhone X | XR | XS | XS Max",
-                "iPhone 11 | Pro | Pro Max",
-                "iPhone SE (2.ª geração) | (3.ª geração)",
-                "iPhone 12 | Mini | Pro | Pro Max",
-                "iPhone 13 | Mini | Pro | Pro Max",
-                "iPhone 14 | Plus | Pro | Pro Max",
-                "iPhone 15 | Plus | Pro | Pro Max",
-                "iPhone 16 | Plus | Pro | Pro Max | 16E"
-            ]
+            for produto in self.produtos.values():
+                if produto.quantidade <= 0:
+                    continue
+                
+                # Divide no primeiro ":" encontrado
+                if ":" in produto.categoria:
+                    categoria, subcategoria = produto.categoria.split(":", 1)
+                    categoria = categoria.strip().upper()
+                    subcategoria = subcategoria.strip()
+                    
+                    if categoria in produtos_por_categoria:
+                        # Compara subcategorias IGNORANDO pipes e espaços extras
+                        for subcat_valida in produtos_por_categoria[categoria]:
+                            if (subcat_valida.replace("|", "").replace(" ", "") == 
+                                subcategoria.replace("|", "").replace(" ", "")):
+                                produtos_por_categoria[categoria][subcat_valida].append(produto.nome)
+                                break
 
-            categorias = {
-                "Video Games": [],
-                "Apple": {subcat: [] for subcat in ordem_apple},
-                "Xiaomi Lacrados": [],
-                "Samsung": []
-            }
-
-            if self.produtos:
-                for produto in self.produtos.values():
-                    if produto.quantidade <= 0:
-                        continue
-                        
-                    if produto.categoria in categorias["Apple"]:
-                        categorias["Apple"][produto.categoria].append(produto.nome)
-                    elif produto.categoria == "Video Games":
-                        categorias["Video Games"].append(produto.nome)
-                    elif produto.categoria == "Xiaomi":
-                        categorias["Xiaomi Lacrados"].append(produto.nome)
-                    elif produto.categoria == "Samsung":
-                        categorias["Samsung"].append(produto.nome)
-
-                conteudo += "⬇ Apple ⬇\n\n"
-                for subcategoria in ordem_apple:
-                    produtos = categorias["Apple"][subcategoria]
+            # Gera o log formatado
+            for categoria, subcategorias in produtos_por_categoria.items():
+                if not any(subcategorias.values()):
+                    continue
+                    
+                conteudo += f"⬇ {categoria} ⬇\n\n"
+                for subcategoria, produtos in subcategorias.items():
                     if produtos:
                         conteudo += f"• {subcategoria}:\n"
                         conteudo += "\n".join(f"  - {produto}" for produto in produtos)
                         conteudo += "\n\n"
 
-                # Adiciona outras categorias
-                for categoria, produtos in categorias.items():
-                    if categoria != "Apple" and produtos:
-                        conteudo += f"⬇ {categoria} ⬇\n\n"
-                        conteudo += "\n".join(f"- {produto}" for produto in produtos)
-                        conteudo += "\n\n"
-            else:
+            if not any(any(subcats.values()) for subcats in produtos_por_categoria.values()):
                 conteudo += "⚠ Nenhum produto cadastrado no sistema.\n"
 
             with open(arquivo_log, "w", encoding="utf-8") as f:
@@ -501,11 +530,11 @@ class AplicativoEstoque:
         btn_cadastrar.grid(row=7, column=0, columnspan=2, pady=10, sticky='ew')
 
     def atualizar_subcategorias(self, event=None):
-        categoria_selecionada = self.categoria_var.get()
+        categoria_selecionada = self.categoria_var.get().upper()  # Garante maiúsculas
         
-        if categoria_selecionada == "Apple":
+        if categoria_selecionada in self.sistema.categorias:
             self.lbl_subcategoria.grid()
-            self.subcategoria_combobox['values'] = self.sistema.categorias["Apple"]
+            self.subcategoria_combobox['values'] = self.sistema.categorias[categoria_selecionada]
             self.subcategoria_combobox.set("Selecione")
             self.subcategoria_combobox.grid()
         else:
@@ -620,35 +649,51 @@ class AplicativoEstoque:
         self.tree.tag_configure('estoque_baixo', background='#4a3c1a')
 
     def cadastrar_produto(self):
+        # Obtém os valores dos campos
         codigo = self.codigo_entry.get().strip()
         nome = self.nome_entry.get().strip()
         quantidade = self.quantidade_entry.get().strip()
         preco = self.preco_entry.get().strip()
         novo = self.novo_var.get()
         seminovo = self.seminovo_var.get()
-        categoria = self.categoria_var.get()
-        subcategoria = self.subcategoria_var.get() if categoria == "Apple" else ""
+        categoria_principal = self.categoria_var.get().upper()  # Garante maiúsculas
+        subcategoria = self.subcategoria_var.get() if categoria_principal in self.sistema.categorias else ""
 
-        if not all([codigo, nome, quantidade, preco]) or categoria == "Selecione":
+        # Validação dos campos
+        if not all([codigo, nome, quantidade, preco]) or categoria_principal == "SELECIONE":
             messagebox.showerror("Erro", "Todos os campos são obrigatórios!")
             return
-            
-        if categoria == "Apple" and not subcategoria:
-            messagebox.showerror("Erro", "Selecione uma subcategoria para produtos Apple!")
+
+        # Validação específica para categorias com subcategorias
+        if categoria_principal in self.sistema.categorias and not subcategoria:
+            messagebox.showerror("Erro", f"Selecione uma subcategoria para {categoria_principal}!")
             return
 
-        categoria_final = subcategoria if categoria == "Apple" else categoria
+        try:
+            quantidade_int = int(quantidade)
+            preco_float = float(preco.replace(',', '.'))
+        except ValueError:
+            messagebox.showerror("Erro", "Quantidade deve ser inteiro e preço deve ser número válido!")
+            return
 
+        # Formata a categoria final (com ou sem subcategoria)
+        if categoria_principal in self.sistema.categorias:
+            categoria_final = f"{categoria_principal}:{subcategoria}"  # Usa : como separador
+        else:
+            categoria_final = categoria_principal  # Para categorias sem subcategorias
+
+        # Cadastra o produto
         sucesso, mensagem = self.sistema.cadastrar_produto(
-            codigo, nome, quantidade, preco, novo, seminovo, categoria_final
+            codigo, nome, quantidade_int, preco_float, novo, seminovo, categoria_final
         )
-        
+
         if sucesso:
             messagebox.showinfo("Sucesso", mensagem)
-            self.codigo_entry.delete(0, 'end')
-            self.nome_entry.delete(0, 'end')
-            self.quantidade_entry.delete(0, 'end')
-            self.preco_entry.delete(0, 'end')
+            # Limpa os campos
+            self.codigo_entry.delete(0, tk.END)
+            self.nome_entry.delete(0, tk.END)
+            self.quantidade_entry.delete(0, tk.END)
+            self.preco_entry.delete(0, tk.END)
             self.categoria_combobox.set("Selecione")
             self.subcategoria_var.set("")
             self.subcategoria_combobox.grid_remove()
@@ -702,19 +747,23 @@ class AplicativoEstoque:
     def atualizar_lista(self):
         for item in self.tree.get_children():
             self.tree.delete(item)
+        
         for produto in self.sistema.listar_produtos():
             tags = []
             if produto.quantidade == 0:
                 tags.append('estoque_zero')
             elif produto.quantidade < 5:
                 tags.append('estoque_baixo')
-                
+            
+            # Extrai apenas a subcategoria se existir separador ":"
+            categoria_exibicao = produto.categoria.split(":")[-1].strip() if ":" in produto.categoria else produto.categoria
+            
             self.tree.insert('', 'end', values=(
                 produto.codigo,
                 produto.nome,
                 produto.quantidade,
                 f"R$ {produto.preco:.2f}",
-                produto.categoria,
+                categoria_exibicao,  # Aqui mostra apenas a subcategoria
                 "Sim" if produto.novo else "Não",
                 "Sim" if produto.seminovo else "Não"
             ), tags=tags)

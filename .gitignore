@@ -2,7 +2,7 @@
 .env
 logs
 *.json
-script estoques/*.py
+script/*.py
 build  
 ControleEstoque.spec
 setup.py
