@@ -1,9 +1,7 @@
 *.env
-.env
-logs
 *.json
 script/*.py
-build  
+build
 ControleEstoque.spec
 setup.py
 *.txt
