@@ -64,8 +64,8 @@ Sistema completo de gerenciamento de estoque para lojas de eletrônicos e celula
    Python 3.8+
 2. **Execução**:
    ```bash
-    git clone https://github.com/seuusuario/controle-estoque-techcell.git
-    cd controle-estoque-techcell
+    git clone https://github.com/denkkix/WSimports.git
+    cd WSimports
     python controlwLogin.py
 3. **Primeiro uso**:
   - O sistema criará automaticamente a estrutura de pastas
