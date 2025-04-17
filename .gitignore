@@ -8,3 +8,4 @@ ControleEstoque.spec
 setup.py
 *.txt
 img
+__pycache__

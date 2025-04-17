@@ -88,6 +88,14 @@ class SistemaEstoque:
             "NINTENDO"
             ]
         }
+        self.armazenamentos = {
+            "APPLE": [" ","32GB", "64GB", "128GB", "256GB", "512GB"],
+            "XIAOMI": [" ", "2/32GB", "3/64GB", "4/64GB", "4/128GB", "6/128GB", "8/128GB", "8/256GB", "12/256GB", "12/512GB"],
+            "SAMSUNG": [" ", "128GB", "2/32GB", "4/128GB", "6/128GB", "6/238GB"],
+            "MOTOROLA": [" ", "2/32GB"],
+            "REALME": [" ", "3/64GB", "8/256GB"],
+            "VIDEO GAMES": [" ", "320GB", "500GB", "512GB", "1TB"]
+        }
         self.carregar_estoque()
 
     def _criar_diretorios(self):
@@ -160,7 +168,6 @@ class SistemaEstoque:
 Parcelamos em até 18x cartão ou em até 36x no boleto. 💳📄
 
 """
-            # Organiza produtos por categoria/subcategoria
             produtos_por_categoria = {categoria: {subcat: [] for subcat in subcategorias} 
                                     for categoria, subcategorias in self.categorias.items()}
 
@@ -168,21 +175,18 @@ Parcelamos em até 18x cartão ou em até 36x no boleto. 💳📄
                 if produto.quantidade <= 0:
                     continue
                 
-                # Divide no primeiro ":" encontrado
                 if ":" in produto.categoria:
                     categoria, subcategoria = produto.categoria.split(":", 1)
                     categoria = categoria.strip().upper()
                     subcategoria = subcategoria.strip()
                     
                     if categoria in produtos_por_categoria:
-                        # Compara subcategorias IGNORANDO pipes e espaços extras
                         for subcat_valida in produtos_por_categoria[categoria]:
                             if (subcat_valida.replace("|", "").replace(" ", "") == 
                                 subcategoria.replace("|", "").replace(" ", "")):
                                 produtos_por_categoria[categoria][subcat_valida].append(produto.nome)
                                 break
 
-            # Gera o log formatado
             for categoria, subcategorias in produtos_por_categoria.items():
                 if not any(subcategorias.values()):
                     continue
@@ -301,7 +305,7 @@ class AplicativoEstoque:
         self.cor_widgets = "#2d2d2d"
         self.cor_borda = "#404040"
         self.cor_tree = "#363636"
-        self.cor_abas = "333333"
+        self.cor_abas = "#333333" 
         
         self.root = root
         self._configurar_janela_principal()  
@@ -321,19 +325,16 @@ class AplicativoEstoque:
         self.cor_destaque = "#2d8ceb"  
         self.cor_widgets = "#2d2d2d"  
         
-        # Configurações gerais
         self.style.configure('.', 
                        background=self.cor_fundo,
                        foreground=self.cor_texto,
                        font=('Arial', 10),
                        borderwidth=0)
     
-        # Configuração do Notebook
         self.style.configure('TNotebook', 
                     background=self.cor_fundo,
                     borderwidth=0)
         
-        # Configuração das abas
         self.style.configure('TNotebook.Tab', 
                         background=self.cor_abas_inativas,
                         foreground=self.cor_texto_abas,
@@ -355,14 +356,12 @@ class AplicativoEstoque:
                     lightcolor=[('selected', self.cor_abas_ativas)],
                     darkcolor=[('selected', self.cor_abas_ativas)])
             
-        # Frames
         self.style.configure('TFrame', 
                            background=self.cor_fundo,
                            borderwidth=1,
                            relief='solid',
                            bordercolor=self.cor_borda)
         
-        # Botões
         self.style.configure('TButton',
                            background=self.cor_widgets,
                            foreground=self.cor_texto,
@@ -375,7 +374,6 @@ class AplicativoEstoque:
                      foreground=[('active', self.cor_texto),
                                  ('pressed', self.cor_texto)])
         
-        # Entradas
         self.style.configure('TEntry',
                            fieldbackground=self.cor_widgets,
                            bordercolor=self.cor_borda,
@@ -383,7 +381,6 @@ class AplicativoEstoque:
                            lightcolor=self.cor_borda,
                            darkcolor=self.cor_borda)
         
-        # Combobox
         self.style.configure('TCombobox',
                        fieldbackground=self.cor_widgets,
                        background=self.cor_widgets,
@@ -403,7 +400,6 @@ class AplicativoEstoque:
                     selectbackground=[('readonly', self.cor_destaque)],
                     selectforeground=[('readonly', 'white')])
             
-        # Treeview
         self.style.configure('Treeview',
                            background=self.cor_tree,
                            fieldbackground=self.cor_tree,
@@ -419,7 +415,6 @@ class AplicativoEstoque:
         self.style.map('Treeview.Heading',
                      background=[('active', self.cor_destaque)])
         
-        # Scrollbars
         self.style.configure('Vertical.TScrollbar',
                            background=self.cor_widgets,
                            troughcolor=self.cor_fundo,
@@ -452,7 +447,6 @@ class AplicativoEstoque:
         self.notebook = ttk.Notebook(self.root, style='TNotebook')
         self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # Criar todas as abas
         self.criar_aba_cadastro()
         self.criar_aba_movimentacao()
         self.criar_aba_consulta()
@@ -467,9 +461,6 @@ class AplicativoEstoque:
         
         frame.columnconfigure(1, weight=1)
         
-        # Configurar grid para melhor organização
-        frame.grid_rowconfigure(7, weight=1)  # Permite que os elementos superiores fiquem no topo
-        
         campos = [
             ("Código:", 0, 'codigo_entry'),
             ("Nome:", 1, 'nome_entry'),
@@ -480,12 +471,10 @@ class AplicativoEstoque:
         for texto, linha, nome in campos:
             lbl = ttk.Label(frame, text=texto)
             lbl.grid(row=linha, column=0, padx=5, pady=5, sticky='w')
-            
             entry = ttk.Entry(frame)
             entry.grid(row=linha, column=1, padx=5, pady=5, sticky='ew')
             setattr(self, nome, entry)
 
-        # Categoria principal
         lbl_categoria = ttk.Label(frame, text="Categoria:")
         lbl_categoria.grid(row=4, column=0, padx=5, pady=5, sticky='w')
         
@@ -501,10 +490,9 @@ class AplicativoEstoque:
         self.categoria_combobox.set("Selecione")
         self.categoria_combobox.bind("<<ComboboxSelected>>", self.atualizar_subcategorias)
 
-        # Subcategoria (inicialmente escondida)
         self.lbl_subcategoria = ttk.Label(frame, text="Subcategoria:")
         self.lbl_subcategoria.grid(row=5, column=0, padx=5, pady=5, sticky='w')
-        self.lbl_subcategoria.grid_remove()  # Esconde inicialmente
+        self.lbl_subcategoria.grid_remove()
         
         self.subcategoria_var = tk.StringVar()
         self.subcategoria_combobox = ttk.Combobox(
@@ -514,33 +502,57 @@ class AplicativoEstoque:
             style='TCombobox'
         )
         self.subcategoria_combobox.grid(row=5, column=1, padx=5, pady=5, sticky='ew')
-        self.subcategoria_combobox.grid_remove()  # Esconde inicialmente
+        self.subcategoria_combobox.grid_remove()
 
-        # Checkbuttons
+        self.lbl_armazenamento = ttk.Label(frame, text="Armazenamento:")
+        self.lbl_armazenamento.grid(row=6, column=0, padx=5, pady=5, sticky='w')
+        self.lbl_armazenamento.grid_remove()
+        
+        self.armazenamento_var = tk.StringVar()
+        self.armazenamento_combobox = ttk.Combobox(
+            frame,
+            textvariable=self.armazenamento_var,
+            state='readonly',
+            style='TCombobox'
+        )
+        self.armazenamento_combobox.grid(row=6, column=1, padx=5, pady=5, sticky='ew')
+        self.armazenamento_combobox.grid_remove()
+
         self.novo_var = tk.BooleanVar()
         chk_novo = ttk.Checkbutton(frame, text="Novo", variable=self.novo_var)
-        chk_novo.grid(row=6, column=0, padx=5, pady=5, sticky='w')
+        chk_novo.grid(row=7, column=0, padx=5, pady=5, sticky='w')
         
         self.seminovo_var = tk.BooleanVar()
         chk_seminovo = ttk.Checkbutton(frame, text="Semi-novo", variable=self.seminovo_var)
-        chk_seminovo.grid(row=6, column=1, padx=5, pady=5, sticky='w')
+        chk_seminovo.grid(row=7, column=1, padx=5, pady=5, sticky='w')
 
-        # Botão Cadastrar
-        btn_cadastrar = ttk.Button(frame, text="Cadastrar", command=self.cadastrar_produto)
-        btn_cadastrar.grid(row=7, column=0, columnspan=2, pady=10, sticky='ew')
+        self.btn_cadastrar = ttk.Button(frame, text="Cadastrar", command=self.cadastrar_produto)
+        self.btn_cadastrar.grid(row=8, column=0, columnspan=2, pady=10, sticky='ew')
 
     def atualizar_subcategorias(self, event=None):
-        categoria_selecionada = self.categoria_var.get().upper()  # Garante maiúsculas
+        self.subcategoria_var.set('')
+        self.armazenamento_var.set('')
         
-        if categoria_selecionada in self.sistema.categorias:
-            self.lbl_subcategoria.grid()
-            self.subcategoria_combobox['values'] = self.sistema.categorias[categoria_selecionada]
-            self.subcategoria_combobox.set("Selecione")
+        categoria = self.categoria_var.get().strip().upper()
+        
+        self.subcategoria_combobox.grid_remove()
+        self.lbl_subcategoria.grid_remove()
+        self.armazenamento_combobox.grid_remove()
+        self.lbl_armazenamento.grid_remove()
+
+        if categoria in self.sistema.categorias:
+            subcats = self.sistema.categorias[categoria]
+            self.subcategoria_combobox['values'] = subcats
+            self.subcategoria_combobox.set(subcats[0] if subcats else '')
             self.subcategoria_combobox.grid()
-        else:
-            self.subcategoria_var.set("")
-            self.lbl_subcategoria.grid_remove()
-            self.subcategoria_combobox.grid_remove()
+            self.lbl_subcategoria.grid()
+            
+            if categoria in self.sistema.armazenamentos:
+                armazenamentos = self.sistema.armazenamentos[categoria]
+                self.armazenamento_combobox['values'] = armazenamentos
+                self.armazenamento_combobox.set(armazenamentos[0] if armazenamentos else '')
+                self.armazenamento_combobox.grid()
+                self.lbl_armazenamento.grid()
 
     def criar_aba_movimentacao(self):
         frame = ttk.Frame(self.notebook)
@@ -587,21 +599,20 @@ class AplicativoEstoque:
         container = ttk.Frame(frame)
         container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # Treeview
         self.tree = ttk.Treeview(
             container,
-            columns=("Codigo", "Nome", "Quantidade", "Preco", "Categoria", "Novo", "SemiNovo"),
+            columns=("Codigo", "Nome", "Quantidade", "Preco", "Categoria","Armazenamento", "Novo", "SemiNovo"),
             show="headings",
             style='Treeview'
         )
         
-        # Configurar colunas
         colunas = [
             ("Codigo", 120, 'center'),
             ("Nome", 250, 'w'),
             ("Quantidade", 100, 'center'),
             ("Preco", 150, 'e'),
             ("Categoria", 150, 'center'),
+            ("Armazenamento", 100, 'center'),
             ("Novo", 80, 'center'),
             ("SemiNovo", 100, 'center')
         ]
@@ -610,21 +621,17 @@ class AplicativoEstoque:
             self.tree.heading(heading, text=heading)
             self.tree.column(heading, width=width, anchor=anchor, stretch=False)
         
-        # Scrollbars
         vsb = ttk.Scrollbar(container, orient="vertical", command=self.tree.yview, style='Vertical.TScrollbar')
         hsb = ttk.Scrollbar(container, orient="horizontal", command=self.tree.xview, style='Horizontal.TScrollbar')
         self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
         
-        # Layout
         self.tree.grid(row=0, column=0, sticky='nsew')
         vsb.grid(row=0, column=1, sticky='ns')
         hsb.grid(row=1, column=0, sticky='ew')
         
-        # Configurar expansão
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
         
-        # Botões inferiores
         btn_frame = ttk.Frame(frame)
         btn_frame.pack(fill=tk.X, pady=5, padx=5)
         
@@ -644,27 +651,23 @@ class AplicativoEstoque:
             )
             btn.pack(side=tk.LEFT, padx=5, expand=True, fill=tk.X)
 
-        # Tags para estoque
         self.tree.tag_configure('estoque_zero', background='#542626')
         self.tree.tag_configure('estoque_baixo', background='#4a3c1a')
 
     def cadastrar_produto(self):
-        # Obtém os valores dos campos
         codigo = self.codigo_entry.get().strip()
         nome = self.nome_entry.get().strip()
         quantidade = self.quantidade_entry.get().strip()
         preco = self.preco_entry.get().strip()
         novo = self.novo_var.get()
         seminovo = self.seminovo_var.get()
-        categoria_principal = self.categoria_var.get().upper()  # Garante maiúsculas
+        categoria_principal = self.categoria_var.get().upper() 
         subcategoria = self.subcategoria_var.get() if categoria_principal in self.sistema.categorias else ""
 
-        # Validação dos campos
         if not all([codigo, nome, quantidade, preco]) or categoria_principal == "SELECIONE":
             messagebox.showerror("Erro", "Todos os campos são obrigatórios!")
             return
 
-        # Validação específica para categorias com subcategorias
         if categoria_principal in self.sistema.categorias and not subcategoria:
             messagebox.showerror("Erro", f"Selecione uma subcategoria para {categoria_principal}!")
             return
@@ -676,20 +679,17 @@ class AplicativoEstoque:
             messagebox.showerror("Erro", "Quantidade deve ser inteiro e preço deve ser número válido!")
             return
 
-        # Formata a categoria final (com ou sem subcategoria)
         if categoria_principal in self.sistema.categorias:
-            categoria_final = f"{categoria_principal}:{subcategoria}"  # Usa : como separador
+            categoria_final = f"{categoria_principal}:{subcategoria}" 
         else:
-            categoria_final = categoria_principal  # Para categorias sem subcategorias
+            categoria_final = categoria_principal
 
-        # Cadastra o produto
         sucesso, mensagem = self.sistema.cadastrar_produto(
             codigo, nome, quantidade_int, preco_float, novo, seminovo, categoria_final
         )
 
         if sucesso:
             messagebox.showinfo("Sucesso", mensagem)
-            # Limpa os campos
             self.codigo_entry.delete(0, tk.END)
             self.nome_entry.delete(0, tk.END)
             self.quantidade_entry.delete(0, tk.END)
@@ -754,16 +754,29 @@ class AplicativoEstoque:
                 tags.append('estoque_zero')
             elif produto.quantidade < 5:
                 tags.append('estoque_baixo')
+
+            armazenamento = "N/A"
+            nome_completo = produto.nome
             
-            # Extrai apenas a subcategoria se existir separador ":"
-            categoria_exibicao = produto.categoria.split(":")[-1].strip() if ":" in produto.categoria else produto.categoria
+            for padrao in ["GB", "TB", "/"]:
+                if padrao in nome_completo.upper():
+                    partes = nome_completo.split()
+                    if partes:
+                        ultima_parte = partes[-1].upper()
+                        if any(p in ultima_parte for p in ["GB", "TB", "/"]):
+                            armazenamento = partes[-1]
+                            nome_completo = " ".join(partes[:-1])
+                            break
+            
+            categoria_exibicao = produto.categoria.split(":")[-1].strip()
             
             self.tree.insert('', 'end', values=(
                 produto.codigo,
-                produto.nome,
+                nome_completo,
                 produto.quantidade,
                 f"R$ {produto.preco:.2f}",
-                categoria_exibicao,  # Aqui mostra apenas a subcategoria
+                categoria_exibicao,
+                armazenamento,
                 "Sim" if produto.novo else "Não",
                 "Sim" if produto.seminovo else "Não"
             ), tags=tags)
