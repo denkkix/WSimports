@@ -1,6 +1,6 @@
 import json, os, datetime
 import tkinter as tk
-from tkinter import ttk, messagebox, PhotoImage
+from tkinter import ttk, messagebox
 from pathlib import Path 
 
 class Produto:
@@ -17,85 +17,13 @@ class SistemaEstoque:
     def __init__(self):
         self.diretorio_base = Path(os.path.expanduser("~")) / "ControleEstoqueData"
         self.diretorio_dados = self.diretorio_base / "dados"
+        self.categorias_path = self.diretorio_dados / "categorias.json"
         self.logs_dir = self.diretorio_base / "logs"
         self.estoque_path = self.diretorio_dados / "estoque.json" 
         self.log_quantidades_path = self.logs_dir / "log_quantidades.txt"
         
         self._criar_diretorios()
-        
-        self.produtos = {}
-        self.categorias = {
-            "APPLE": [
-            "ACESSÓRIOS",
-            "IPAD",
-            "APPLE WATCH",
-            "MAIS ANTIGOS",
-            "IPHONE 8 & PLUS",
-            "IPHONE X | XR | XS | XS MAX",
-            "IPHONE 11 | PRO | PRO MAX",
-            "IPHONE SE (2.ª GERAÇÃO) | (3.ª GERAÇÃO)",
-            "IPHONE 12 | MINI | PRO | PRO MAX",
-            "IPHONE 13 | MINI | PRO | PRO MAX",
-            "IPHONE 14 | PLUS | PRO | PRO MAX",
-            "IPHONE 15 | PLUS | PRO | PRO MAX",
-            "IPHONE 16 | PLUS | PRO | PRO MAX | 16E"
-            ],
-            "XIAOMI": [
-            "SMARTWATCH", 
-            "FONE", 
-            "POCO M", 
-            "POCO F", 
-            "POCO X",
-            "REDMI A", 
-            "REDMI 8", 
-            "REDMI 9", 
-            "REDMI 10",
-            "REDMI 12", 
-            "REDMI 13", 
-            "REDMI 14", 
-            "NOTE 7",
-            "NOTE 8", 
-            "NOTE 9", 
-            "NOTE 10", 
-            "NOTE 11 & PRO",
-            "NOTE 12 & PRO", 
-            "NOTE 13 & PRO", 
-            "NOTE 14 & PRO",
-            "11 LITE", 
-            "12 LITE", 
-            "13 LITE", 
-            "REDMI PAD"
-            ],
-            "MOTOROLA": [
-            "MOTO E6", 
-            "MOTO E7"
-            ],
-            "SAMSUNG": [
-            "GALAXY A",
-            "GALAXY M", 
-            "GALAXY S"
-            ],
-            "REALME": [
-            "REALME C", 
-            "REALME NOTE"
-            ],
-            "VIDEO GAMES": [
-            "PLAYSTATION 3",
-            "PLAYSTATION 4", 
-            "XBOX 360",
-            "XBOX ONE", 
-            "XBOX S & X",
-            "NINTENDO"
-            ]
-        }
-        self.armazenamentos = {
-            "APPLE": [" ","32GB", "64GB", "128GB", "256GB", "512GB"],
-            "XIAOMI": [" ", "2/32GB", "3/64GB", "4/64GB", "4/128GB", "6/128GB", "8/128GB", "8/256GB", "12/256GB", "12/512GB"],
-            "SAMSUNG": [" ", "128GB", "2/32GB", "4/128GB", "6/128GB", "6/238GB"],
-            "MOTOROLA": [" ", "2/32GB"],
-            "REALME": [" ", "3/64GB", "8/256GB"],
-            "VIDEO GAMES": [" ", "320GB", "500GB", "512GB", "1TB"]
-        }
+        self.carregar_categorias()
         self.carregar_estoque()
 
     def _criar_diretorios(self):
@@ -107,6 +35,224 @@ class SistemaEstoque:
             messagebox.showerror("Erro Crítico", 
                 f"Falha ao criar diretórios: {str(e)}\n"
                 f"Verifique as permissões em: {self.diretorio_base}")
+
+    def carregar_categorias(self):
+        """Carrega categorias do arquivo ou usa as padrão"""
+        try:
+            if self.categorias_path.exists():
+                with open(self.categorias_path, 'r', encoding='utf-8') as f:
+                    dados = json.load(f)
+                    
+                    if not isinstance(dados, dict):
+                        raise ValueError("Formato inválido do arquivo")
+                    
+                    self.categorias = dados.get("categorias", self._categorias_padrao())
+                    self.armazenamentos = dados.get("armazenamentos", self._armazenamentos_padrao())
+                    
+                    if not isinstance(self.categorias, dict) or not isinstance(self.armazenamentos, dict):
+                        raise ValueError("Estrutura de dados inválida")
+            else:
+                self.categorias = self._categorias_padrao()
+                self.armazenamentos = self._armazenamentos_padrao()
+                self.salvar_categorias()
+                
+        except json.JSONDecodeError:
+            messagebox.showerror("Erro", "Arquivo de categorias corrompido. Usando padrão.")
+            self.categorias = self._categorias_padrao()
+            self.armazenamentos = self._armazenamentos_padrao()
+            self.salvar_categorias()
+        except Exception as e:
+            messagebox.showerror("Erro", f"Falha ao carregar categorias: {str(e)}")
+            self.categorias = self._categorias_padrao()
+            self.armazenamentos = self._armazenamentos_padrao()
+
+    def _categorias_padrao(self):
+        """Retorna as categorias padrão do sistema"""
+        return {
+            "APPLE": [
+                "ACESSÓRIOS", "IPAD", "APPLE WATCH", "MAIS ANTIGOS",
+                "IPHONE 8 & PLUS", "IPHONE X | XR | XS | XS MAX",
+                "IPHONE 11 | PRO | PRO MAX", "IPHONE SE (2.ª GERAÇÃO) | (3.ª GERAÇÃO)",
+                "IPHONE 12 | MINI | PRO | PRO MAX", "IPHONE 13 | MINI | PRO | PRO MAX",
+                "IPHONE 14 | PLUS | PRO | PRO MAX", "IPHONE 15 | PLUS | PRO | PRO MAX",
+                "IPHONE 16 | PLUS | PRO | PRO MAX | 16E"
+            ],
+            "XIAOMI": [
+                "SMARTWATCH", "FONE", "POCO M", "POCO F", "POCO X",
+                "REDMI A", "REDMI 8", "REDMI 9", "REDMI 10", "REDMI 12",
+                "REDMI 13", "REDMI 14", "NOTE 7", "NOTE 8", "NOTE 9",
+                "NOTE 10", "NOTE 11 & PRO", "NOTE 12 & PRO", "NOTE 13 & PRO",
+                "NOTE 14 & PRO", "11 LITE", "12 LITE", "13 LITE", "REDMI PAD"
+            ],
+            "MOTOROLA": ["MOTO E6", "MOTO E7"],
+            "SAMSUNG": ["GALAXY A", "GALAXY M", "GALAXY S"],
+            "REALME": ["REALME C", "REALME NOTE"],
+            "VIDEO GAMES": [
+                "PLAYSTATION 3", "PLAYSTATION 4", "XBOX 360",
+                "XBOX ONE", "XBOX S & X", "NINTENDO"
+            ]
+        }
+
+    def _armazenamentos_padrao(self):
+        """Retorna os armazenamentos padrão"""
+        return {
+            "APPLE": [" ","32GB", "64GB", "128GB", "256GB", "512GB"],
+            "XIAOMI": [" ", "2/32GB", "3/64GB", "4/64GB", "4/128GB", "6/128GB", 
+                      "8/128GB", "8/256GB", "12/256GB", "12/512GB"],
+            "SAMSUNG": [" ", "128GB", "2/32GB", "4/128GB", "6/128GB", "6/238GB"],
+            "MOTOROLA": [" ", "2/32GB"],
+            "REALME": [" ", "3/64GB", "8/256GB"],
+            "VIDEO GAMES": [" ", "320GB", "500GB", "512GB", "1TB"]
+        }
+
+    def salvar_categorias(self):
+        """Salva as categorias no arquivo com tratamento robusto de erros"""
+        try:
+            # Garante que o diretório existe
+            self.diretorio_dados.mkdir(parents=True, exist_ok=True)
+            
+            # Cria um arquivo temporário primeiro
+            temp_path = self.categorias_path.with_suffix('.tmp')
+            
+            # Dados a serem salvos
+            dados = {
+                "categorias": self.categorias,
+                "armazenamentos": self.armazenamentos
+            }
+            
+            # Escreve no arquivo temporário
+            with open(temp_path, 'w', encoding='utf-8') as f:
+                json.dump(dados, f, indent=4, ensure_ascii=False)
+            
+            # Substitui o arquivo original pelo temporário
+            if self.categorias_path.exists():
+                os.replace(temp_path, self.categorias_path)
+            else:
+                os.rename(temp_path, self.categorias_path)
+                
+            return True
+        except Exception as e:
+            # Remove o arquivo temporário se existir
+            if 'temp_path' in locals() and temp_path.exists():
+                try:
+                    os.remove(temp_path)
+                except:
+                    pass
+            messagebox.showerror("Erro", f"Falha ao salvar categorias: {str(e)}")
+            return False
+
+    def adicionar_categoria(self, categoria: str, subcategorias: list):
+        """Adiciona uma nova categoria com subcategorias"""
+        try:
+            categoria = categoria.strip().upper()
+            if not categoria:
+                return False, "Nome da categoria não pode ser vazio"
+            
+            if categoria in self.categorias:
+                return False, f"Categoria '{categoria}' já existe"
+            
+            # Filtra subcategorias vazias
+            subcats_validas = [s.strip() for s in subcategorias if s.strip()]
+            
+            self.categorias[categoria] = subcats_validas
+            self.armazenamentos[categoria] = [" "]  # Valor padrão
+            
+            if not self.salvar_categorias():
+                # Reverte em caso de erro
+                del self.categorias[categoria]
+                if categoria in self.armazenamentos:
+                    del self.armazenamentos[categoria]
+                return False, "Erro ao salvar no arquivo"
+            
+            return True, f"Categoria '{categoria}' adicionada com sucesso"
+        except Exception as e:
+            return False, f"Erro ao adicionar categoria: {str(e)}"
+
+    def adicionar_subcategoria(self, categoria: str, subcategoria: str):
+        """Adiciona subcategoria com verificação e salvamento"""
+        categoria = categoria.strip().upper()
+        subcategoria = subcategoria.strip()
+        
+        if not categoria:
+            return False, "Selecione uma categoria!"
+        if not subcategoria:
+            return False, "Nome da subcategoria não pode ser vazio!"
+        
+        if categoria not in self.categorias:
+            return False, f"Categoria '{categoria}' não encontrada!"
+        if subcategoria in self.categorias[categoria]:
+            return False, f"Subcategoria '{subcategoria}' já existe!"
+        
+        self.categorias[categoria].append(subcategoria)
+        
+        if not self.salvar_categorias():
+            # Reverte em caso de erro
+            self.categorias[categoria].remove(subcategoria)
+            return False, "Erro ao salvar no arquivo!"
+        
+        return True, f"Subcategoria '{subcategoria}' adicionada com sucesso!"
+
+    def remover_categoria(self, categoria: str):
+        """Remove categoria com todas as verificações necessárias"""
+        categoria = categoria.strip().upper()
+        if not categoria:
+            return False, "Selecione uma categoria!"
+        
+        if categoria not in self.categorias:
+            return False, f"Categoria '{categoria}' não encontrada!"
+        
+        # Verifica se há produtos nesta categoria
+        produtos_na_categoria = any(
+            p.categoria.startswith(categoria + ":") 
+            for p in self.produtos.values()
+        )
+        if produtos_na_categoria:
+            return False, "Não pode remover: existem produtos nesta categoria!"
+        
+        # Remove a categoria
+        del self.categorias[categoria]
+        if categoria in self.armazenamentos:
+            del self.armazenamentos[categoria]
+        
+        if not self.salvar_categorias():
+            # Reverte em caso de erro
+            self.categorias[categoria] = []  # Recria vazia
+            return False, "Erro ao salvar no arquivo!"
+        
+        return True, f"Categoria '{categoria}' removida com sucesso!"
+
+    def remover_subcategoria(self, categoria: str, subcategoria: str):
+        """Remove subcategoria com todas as verificações"""
+        categoria = categoria.strip().upper()
+        subcategoria = subcategoria.strip()
+        
+        if not categoria:
+            return False, "Selecione uma categoria!"
+        if not subcategoria:
+            return False, "Selecione uma subcategoria!"
+        
+        if categoria not in self.categorias:
+            return False, f"Categoria '{categoria}' não encontrada!"
+        if subcategoria not in self.categorias[categoria]:
+            return False, f"Subcategoria '{subcategoria}' não encontrada!"
+        
+        # Verifica se há produtos nesta subcategoria
+        produtos_na_subcat = any(
+            p.categoria == f"{categoria}:{subcategoria}"
+            for p in self.produtos.values()
+        )
+        if produtos_na_subcat:
+            return False, "Não pode remover: existem produtos nesta subcategoria!"
+        
+        # Remove a subcategoria
+        self.categorias[categoria].remove(subcategoria)
+        
+        if not self.salvar_categorias():
+            # Reverte em caso de erro
+            self.categorias[categoria].append(subcategoria)
+            return False, "Erro ao salvar no arquivo!"
+        
+        return True, f"Subcategoria '{subcategoria}' removida com sucesso!"
 
     def carregar_estoque(self):
         try:
@@ -256,7 +402,8 @@ Parcelamos em até 18x cartão ou em até 36x no boleto. 💳📄
 
     def listar_produtos(self):
         return list(self.produtos.values())
-    
+
+
 class LoginWindow:
     def __init__(self, root: tk.Tk, on_login_success):
         self.root = root
@@ -450,7 +597,9 @@ class AplicativoEstoque:
         self.criar_aba_cadastro()
         self.criar_aba_movimentacao()
         self.criar_aba_consulta()
+        self.criar_aba_categorias()
         self.atualizar_lista()
+        self.atualizar_combobox_cadastro()
 
         self.style.theme_use('clam')  
         self.notebook.update_idletasks()
@@ -877,6 +1026,197 @@ class AplicativoEstoque:
             messagebox.showerror("Erro", "Digite um valor numérico válido!")
         except Exception as e:
             messagebox.showerror("Erro", f"Falha ao atualizar: {str(e)}")
+
+    def criar_aba_categorias(self):
+        frame = ttk.Frame(self.notebook)
+        self.notebook.add(frame, text="Categorias")
+        
+        # Frame para adicionar nova categoria
+        add_cat_frame = ttk.LabelFrame(frame, text=" Adicionar Nova Categoria ")
+        add_cat_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+        
+        ttk.Label(add_cat_frame, text="Nome da Categoria:").grid(row=0, column=0, padx=5, pady=5)
+        self.nova_categoria_entry = ttk.Entry(add_cat_frame)
+        self.nova_categoria_entry.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        
+        ttk.Label(add_cat_frame, text="Subcategorias (separadas por vírgula):").grid(row=1, column=0, padx=5, pady=5)
+        self.novas_subcats_entry = ttk.Entry(add_cat_frame)
+        self.novas_subcats_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+        
+        ttk.Button(
+            add_cat_frame, 
+            text="Adicionar Categoria", 
+            command=self.adicionar_categoria
+        ).grid(row=2, column=0, columnspan=2, pady=5, sticky="ew")
+        
+        # Frame para gerenciar subcategorias
+        subcat_frame = ttk.LabelFrame(frame, text=" Gerenciar Subcategorias ")
+        subcat_frame.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
+        
+        ttk.Label(subcat_frame, text="Categoria:").grid(row=0, column=0, padx=5, pady=5)
+        self.categoria_subcat_var = tk.StringVar()
+        self.categoria_subcat_combobox = ttk.Combobox(
+            subcat_frame,
+            textvariable=self.categoria_subcat_var,
+            values=list(self.sistema.categorias.keys()),
+            state="readonly"
+        )
+        self.categoria_subcat_combobox.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        self.categoria_subcat_combobox.bind("<<ComboboxSelected>>", self.atualizar_lista_subcats)
+        
+        ttk.Label(subcat_frame, text="Subcategorias:").grid(row=1, column=0, padx=5, pady=5)
+        self.lista_subcats = tk.Listbox(subcat_frame, height=5)
+        self.lista_subcats.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+        
+        ttk.Label(subcat_frame, text="Nova Subcategoria:").grid(row=2, column=0, padx=5, pady=5)
+        self.nova_subcat_entry = ttk.Entry(subcat_frame)
+        self.nova_subcat_entry.grid(row=2, column=1, padx=5, pady=5, sticky="ew")
+        
+        btn_frame = ttk.Frame(subcat_frame)
+        btn_frame.grid(row=3, column=0, columnspan=2, pady=5, sticky="ew")
+        
+        ttk.Button(
+            btn_frame, 
+            text="Adicionar", 
+            command=self.adicionar_subcategoria
+        ).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
+        
+        ttk.Button(
+            btn_frame, 
+            text="Remover", 
+            command=self.remover_subcategoria
+        ).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
+        
+        # Frame para remover categorias
+        rem_cat_frame = ttk.LabelFrame(frame, text=" Remover Categoria ")
+        rem_cat_frame.grid(row=2, column=0, padx=10, pady=10, sticky="ew")
+        
+        ttk.Label(rem_cat_frame, text="Categoria:").grid(row=0, column=0, padx=5, pady=5)
+        self.categoria_remover_var = tk.StringVar()
+        self.categoria_remover_combobox = ttk.Combobox(
+            rem_cat_frame,
+            textvariable=self.categoria_remover_var,
+            values=list(self.sistema.categorias.keys()),
+            state="readonly"
+        )
+        self.categoria_remover_combobox.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        
+        ttk.Button(
+            rem_cat_frame, 
+            text="Remover Categoria", 
+            command=self.remover_categoria
+        ).grid(row=1, column=0, columnspan=2, pady=5, sticky="ew")
+        
+        frame.columnconfigure(0, weight=1)
+        self.atualizar_combobox_categorias()
+
+    def atualizar_combobox_categorias(self):
+        categorias = list(self.sistema.categorias.keys())
+        self.categoria_subcat_combobox['values'] = categorias
+        self.categoria_remover_combobox['values'] = categorias
+        
+        if categorias:
+            self.categoria_subcat_combobox.current(0)
+            self.categoria_remover_combobox.current(0)
+            self.atualizar_lista_subcats()
+        
+        self.atualizar_combobox_cadastro()
+
+    def atualizar_lista_subcats(self, event=None):
+        self.lista_subcats.delete(0, tk.END)
+        categoria = self.categoria_subcat_var.get()
+        
+        if categoria in self.sistema.categorias:
+            for subcat in self.sistema.categorias[categoria]:
+                self.lista_subcats.insert(tk.END, subcat)
+
+    def adicionar_categoria(self):
+        categoria = self.nova_categoria_entry.get().strip().upper()
+        subcats_text = self.novas_subcats_entry.get().strip()
+        
+        if not categoria:
+            messagebox.showerror("Erro", "Digite um nome para a categoria!")
+            return
+        
+        subcategorias = [s.strip() for s in subcats_text.split(",") if s.strip()]
+        
+        sucesso, mensagem = self.sistema.adicionar_categoria(categoria, subcategorias)
+        if sucesso:
+            messagebox.showinfo("Sucesso", mensagem)
+            self.nova_categoria_entry.delete(0, tk.END)
+            self.novas_subcats_entry.delete(0, tk.END)
+            self.atualizar_combobox_categorias()
+        else:
+            messagebox.showerror("Erro", mensagem)
+
+    def adicionar_subcategoria(self):
+        categoria = self.categoria_subcat_var.get()
+        subcategoria = self.nova_subcat_entry.get().strip()
+        
+        if not categoria:
+            messagebox.showerror("Erro", "Selecione uma categoria!")
+            return
+        
+        if not subcategoria:
+            messagebox.showerror("Erro", "Digite um nome para a subcategoria!")
+            return
+        
+        sucesso, mensagem = self.sistema.adicionar_subcategoria(categoria, subcategoria)
+        if sucesso:
+            messagebox.showinfo("Sucesso", mensagem)
+            self.nova_subcat_entry.delete(0, tk.END)
+            self.atualizar_lista_subcats()
+            self.atualizar_combobox_cadastro()
+        else:
+            messagebox.showerror("Erro", mensagem)
+
+    def remover_subcategoria(self):
+        categoria = self.categoria_subcat_var.get()
+        selecionado = self.lista_subcats.curselection()
+        
+        if not categoria:
+            messagebox.showerror("Erro", "Selecione uma categoria!")
+            return
+        
+        if not selecionado:
+            messagebox.showerror("Erro", "Selecione uma subcategoria para remover!")
+            return
+        
+        subcategoria = self.lista_subcats.get(selecionado[0])
+        
+        sucesso, mensagem = self.sistema.remover_subcategoria(categoria, subcategoria)
+        if sucesso:
+            messagebox.showinfo("Sucesso", mensagem)
+            self.atualizar_lista_subcats()
+            self.atualizar_combobox_cadastro()
+        else:
+            messagebox.showerror("Erro", mensagem)
+
+    def remover_categoria(self):
+        categoria = self.categoria_remover_var.get()
+        
+        if not categoria:
+            messagebox.showerror("Erro", "Selecione uma categoria para remover!")
+            return
+        
+        sucesso, mensagem = self.sistema.remover_categoria(categoria)
+        if sucesso:
+            messagebox.showinfo("Sucesso", mensagem)
+            self.atualizar_combobox_categorias()
+        else:
+            messagebox.showerror("Erro", mensagem)
+
+    def atualizar_combobox_cadastro(self):
+        self.categoria_combobox['values'] = list(self.sistema.categorias.keys())
+        
+        current_cat = self.categoria_var.get()
+        if current_cat in self.sistema.categorias:
+            self.categoria_combobox.set(current_cat)
+            self.atualizar_subcategorias()
+        else:
+            self.categoria_combobox.set("Selecione")
+            self.subcategoria_combobox.grid_remove()
+            self.lbl_subcategoria.grid_remove()
 
 if __name__ == "__main__":
     root = tk.Tk()

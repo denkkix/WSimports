@@ -1,5 +1,8 @@
 *.env
 *.json
+dist
+test
+test_controlwLogin.py
 script/*.py
 build
 ControleEstoque.spec
