@@ -37,7 +37,6 @@ class SistemaEstoque:
                 f"Verifique as permissões em: {self.diretorio_base}")
 
     def carregar_categorias(self):
-        """Carrega categorias do arquivo ou usa as padrão"""
         try:
             if self.categorias_path.exists():
                 with open(self.categorias_path, 'r', encoding='utf-8') as f:
@@ -67,7 +66,6 @@ class SistemaEstoque:
             self.armazenamentos = self._armazenamentos_padrao()
 
     def _categorias_padrao(self):
-        """Retorna as categorias padrão do sistema"""
         return {
             "APPLE": [
                 "ACESSÓRIOS", "IPAD", "APPLE WATCH", "MAIS ANTIGOS",
@@ -94,7 +92,6 @@ class SistemaEstoque:
         }
 
     def _armazenamentos_padrao(self):
-        """Retorna os armazenamentos padrão"""
         return {
             "APPLE": [" ","32GB", "64GB", "128GB", "256GB", "512GB"],
             "XIAOMI": [" ", "2/32GB", "3/64GB", "4/64GB", "4/128GB", "6/128GB", 
@@ -106,33 +103,24 @@ class SistemaEstoque:
         }
 
     def salvar_categorias(self):
-        """Salva as categorias no arquivo com tratamento robusto de erros"""
         try:
-            # Garante que o diretório existe
             self.diretorio_dados.mkdir(parents=True, exist_ok=True)
-            
-            # Cria um arquivo temporário primeiro
             temp_path = self.categorias_path.with_suffix('.tmp')
             
-            # Dados a serem salvos
             dados = {
                 "categorias": self.categorias,
                 "armazenamentos": self.armazenamentos
             }
             
-            # Escreve no arquivo temporário
             with open(temp_path, 'w', encoding='utf-8') as f:
                 json.dump(dados, f, indent=4, ensure_ascii=False)
             
-            # Substitui o arquivo original pelo temporário
             if self.categorias_path.exists():
                 os.replace(temp_path, self.categorias_path)
             else:
-                os.rename(temp_path, self.categorias_path)
-                
+                os.rename(temp_path, self.categorias_path)    
             return True
         except Exception as e:
-            # Remove o arquivo temporário se existir
             if 'temp_path' in locals() and temp_path.exists():
                 try:
                     os.remove(temp_path)
@@ -142,7 +130,6 @@ class SistemaEstoque:
             return False
 
     def adicionar_categoria(self, categoria: str, subcategorias: list):
-        """Adiciona uma nova categoria com subcategorias"""
         try:
             categoria = categoria.strip().upper()
             if not categoria:
@@ -151,14 +138,12 @@ class SistemaEstoque:
             if categoria in self.categorias:
                 return False, f"Categoria '{categoria}' já existe"
             
-            # Filtra subcategorias vazias
             subcats_validas = [s.strip() for s in subcategorias if s.strip()]
             
             self.categorias[categoria] = subcats_validas
-            self.armazenamentos[categoria] = [" "]  # Valor padrão
+            self.armazenamentos[categoria] = [" "] 
             
             if not self.salvar_categorias():
-                # Reverte em caso de erro
                 del self.categorias[categoria]
                 if categoria in self.armazenamentos:
                     del self.armazenamentos[categoria]
@@ -169,7 +154,6 @@ class SistemaEstoque:
             return False, f"Erro ao adicionar categoria: {str(e)}"
 
     def adicionar_subcategoria(self, categoria: str, subcategoria: str):
-        """Adiciona subcategoria com verificação e salvamento"""
         categoria = categoria.strip().upper()
         subcategoria = subcategoria.strip()
         
@@ -186,14 +170,12 @@ class SistemaEstoque:
         self.categorias[categoria].append(subcategoria)
         
         if not self.salvar_categorias():
-            # Reverte em caso de erro
             self.categorias[categoria].remove(subcategoria)
             return False, "Erro ao salvar no arquivo!"
         
         return True, f"Subcategoria '{subcategoria}' adicionada com sucesso!"
 
     def remover_categoria(self, categoria: str):
-        """Remove categoria com todas as verificações necessárias"""
         categoria = categoria.strip().upper()
         if not categoria:
             return False, "Selecione uma categoria!"
@@ -201,7 +183,6 @@ class SistemaEstoque:
         if categoria not in self.categorias:
             return False, f"Categoria '{categoria}' não encontrada!"
         
-        # Verifica se há produtos nesta categoria
         produtos_na_categoria = any(
             p.categoria.startswith(categoria + ":") 
             for p in self.produtos.values()
@@ -209,20 +190,17 @@ class SistemaEstoque:
         if produtos_na_categoria:
             return False, "Não pode remover: existem produtos nesta categoria!"
         
-        # Remove a categoria
         del self.categorias[categoria]
         if categoria in self.armazenamentos:
             del self.armazenamentos[categoria]
         
         if not self.salvar_categorias():
-            # Reverte em caso de erro
-            self.categorias[categoria] = []  # Recria vazia
+            self.categorias[categoria] = []
             return False, "Erro ao salvar no arquivo!"
         
         return True, f"Categoria '{categoria}' removida com sucesso!"
 
     def remover_subcategoria(self, categoria: str, subcategoria: str):
-        """Remove subcategoria com todas as verificações"""
         categoria = categoria.strip().upper()
         subcategoria = subcategoria.strip()
         
@@ -236,19 +214,15 @@ class SistemaEstoque:
         if subcategoria not in self.categorias[categoria]:
             return False, f"Subcategoria '{subcategoria}' não encontrada!"
         
-        # Verifica se há produtos nesta subcategoria
         produtos_na_subcat = any(
             p.categoria == f"{categoria}:{subcategoria}"
             for p in self.produtos.values()
         )
         if produtos_na_subcat:
             return False, "Não pode remover: existem produtos nesta subcategoria!"
-        
-        # Remove a subcategoria
         self.categorias[categoria].remove(subcategoria)
         
         if not self.salvar_categorias():
-            # Reverte em caso de erro
             self.categorias[categoria].append(subcategoria)
             return False, "Erro ao salvar no arquivo!"
         
@@ -402,7 +376,6 @@ Parcelamos em até 18x cartão ou em até 36x no boleto. 💳📄
 
     def listar_produtos(self):
         return list(self.produtos.values())
-
 
 class LoginWindow:
     def __init__(self, root: tk.Tk, on_login_success):
@@ -598,6 +571,7 @@ class AplicativoEstoque:
         self.criar_aba_movimentacao()
         self.criar_aba_consulta()
         self.criar_aba_categorias()
+        self.criar_aba_armazenamentos()
         self.atualizar_lista()
         self.atualizar_combobox_cadastro()
 
@@ -741,7 +715,6 @@ class AplicativoEstoque:
         parent.columnconfigure(1, weight=1)
 
     def criar_aba_consulta(self):
-        """Cria a aba de consulta de estoque com tabela dimensionada corretamente"""
         frame = ttk.Frame(self.notebook)
         self.notebook.add(frame, text="Consulta")
         
@@ -1031,7 +1004,6 @@ class AplicativoEstoque:
         frame = ttk.Frame(self.notebook)
         self.notebook.add(frame, text="Categorias")
         
-        # Frame para adicionar nova categoria
         add_cat_frame = ttk.LabelFrame(frame, text=" Adicionar Nova Categoria ")
         add_cat_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
         
@@ -1049,7 +1021,6 @@ class AplicativoEstoque:
             command=self.adicionar_categoria
         ).grid(row=2, column=0, columnspan=2, pady=5, sticky="ew")
         
-        # Frame para gerenciar subcategorias
         subcat_frame = ttk.LabelFrame(frame, text=" Gerenciar Subcategorias ")
         subcat_frame.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
         
@@ -1087,7 +1058,6 @@ class AplicativoEstoque:
             command=self.remover_subcategoria
         ).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
         
-        # Frame para remover categorias
         rem_cat_frame = ttk.LabelFrame(frame, text=" Remover Categoria ")
         rem_cat_frame.grid(row=2, column=0, padx=10, pady=10, sticky="ew")
         
@@ -1215,8 +1185,151 @@ class AplicativoEstoque:
             self.atualizar_subcategorias()
         else:
             self.categoria_combobox.set("Selecione")
-            self.subcategoria_combobox.grid_remove()
-            self.lbl_subcategoria.grid_remove()
+    
+        if current_cat in self.sistema.armazenamentos:
+            self.armazenamento_combobox['values'] = self.sistema.armazenamentos[current_cat]
+            if self.sistema.armazenamentos[current_cat]:
+                self.armazenamento_combobox.set(self.sistema.armazenamentos[current_cat][0])
+        else:
+            self.armazenamento_combobox.set("")
+
+    def criar_aba_armazenamentos(self):
+        frame = ttk.Frame(self.notebook)
+        self.notebook.add(frame, text="Armazenamentos")
+        
+        add_frame = ttk.LabelFrame(frame, text=" Adicionar Armazenamento ")
+        add_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+        
+        ttk.Label(add_frame, text="Categoria:").grid(row=0, column=0, padx=5, pady=5)
+        self.armazenamento_categoria_var = tk.StringVar()
+        self.armazenamento_categoria_combobox = ttk.Combobox(
+            add_frame,
+            textvariable=self.armazenamento_categoria_var,
+            values=list(self.sistema.categorias.keys()),
+            state="readonly"
+        )
+        self.armazenamento_categoria_combobox.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        self.armazenamento_categoria_combobox.bind("<<ComboboxSelected>>", self.atualizar_armazenamentos_lista)
+        
+        ttk.Label(add_frame, text="Novo Armazenamento:").grid(row=1, column=0, padx=5, pady=5)
+        self.novo_armazenamento_entry = ttk.Entry(add_frame)
+        self.novo_armazenamento_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+        
+        ttk.Button(
+            add_frame,
+            text="Adicionar",
+            command=self.adicionar_armazenamento
+        ).grid(row=2, column=0, columnspan=2, pady=5, sticky="ew")
+        
+        rem_frame = ttk.LabelFrame(frame, text=" Remover Armazenamento ")
+        rem_frame.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
+        
+        ttk.Label(rem_frame, text="Categoria:").grid(row=0, column=0, padx=5, pady=5)
+        self.rem_armazenamento_categoria_var = tk.StringVar()
+        self.rem_armazenamento_categoria_combobox = ttk.Combobox(
+            rem_frame,
+            textvariable=self.rem_armazenamento_categoria_var,
+            values=list(self.sistema.categorias.keys()),
+            state="readonly"
+        )
+        self.rem_armazenamento_categoria_combobox.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        self.rem_armazenamento_categoria_combobox.bind("<<ComboboxSelected>>", self.atualizar_armazenamentos_remover)
+        
+        ttk.Label(rem_frame, text="Armazenamentos:").grid(row=1, column=0, padx=5, pady=5)
+        self.lista_armazenamentos_remover = tk.Listbox(rem_frame, height=5)
+        self.lista_armazenamentos_remover.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+        
+        ttk.Button(
+            rem_frame,
+            text="Remover Selecionado",
+            command=self.remover_armazenamento
+        ).grid(row=2, column=0, columnspan=2, pady=5, sticky="ew")
+        
+        frame.columnconfigure(0, weight=1)
+        
+        if list(self.sistema.categorias.keys()):
+            self.armazenamento_categoria_combobox.current(0)
+            self.rem_armazenamento_categoria_combobox.current(0)
+            self.atualizar_armazenamentos_lista()
+            self.atualizar_armazenamentos_remover()
+
+    def atualizar_armazenamentos_lista(self, event=None):
+        categoria = self.armazenamento_categoria_var.get()
+        if categoria in self.sistema.armazenamentos:
+            pass
+
+    def atualizar_armazenamentos_remover(self, event=None):
+        self.lista_armazenamentos_remover.delete(0, tk.END)
+        categoria = self.rem_armazenamento_categoria_var.get()
+        
+        if categoria in self.sistema.armazenamentos:
+            for armazenamento in self.sistema.armazenamentos[categoria]:
+                self.lista_armazenamentos_remover.insert(tk.END, armazenamento)
+
+    def adicionar_armazenamento(self):
+        categoria = self.armazenamento_categoria_var.get()
+        armazenamento = self.novo_armazenamento_entry.get().strip()
+        
+        if not categoria:
+            messagebox.showerror("Erro", "Selecione uma categoria!")
+            return
+        
+        if not armazenamento:
+            messagebox.showerror("Erro", "Digite um armazenamento válido!")
+            return
+        
+        if categoria not in self.sistema.armazenamentos:
+            self.sistema.armazenamentos[categoria] = []
+        
+        if armazenamento in self.sistema.armazenamentos[categoria]:
+            messagebox.showerror("Erro", f"Armazenamento '{armazenamento}' já existe!")
+            return
+        
+        self.sistema.armazenamentos[categoria].append(armazenamento)
+        
+        if self.sistema.salvar_categorias():
+            messagebox.showinfo("Sucesso", f"Armazenamento '{armazenamento}' adicionado com sucesso!")
+            self.novo_armazenamento_entry.delete(0, tk.END)
+            self.atualizar_armazenamentos_remover()
+            self.atualizar_combobox_cadastro()
+        else:
+            messagebox.showerror("Erro", "Falha ao salvar armazenamentos!")
+
+    def remover_armazenamento(self):
+        categoria = self.rem_armazenamento_categoria_var.get()
+        selecionado = self.lista_armazenamentos_remover.curselection()
+        
+        if not categoria:
+            messagebox.showerror("Erro", "Selecione uma categoria!")
+            return
+        
+        if not selecionado:
+            messagebox.showerror("Erro", "Selecione um armazenamento para remover!")
+            return
+        
+        armazenamento = self.lista_armazenamentos_remover.get(selecionado[0])
+        
+        produtos_com_armazenamento = any(
+            armazenamento in p.nome.upper() 
+            for p in self.sistema.produtos.values() 
+            if p.categoria.startswith(categoria + ":")
+        )
+        
+        if produtos_com_armazenamento:
+            messagebox.showerror("Erro", "Não é possível remover: existem produtos com este armazenamento!")
+            return
+        
+        if armazenamento in self.sistema.armazenamentos[categoria]:
+            self.sistema.armazenamentos[categoria].remove(armazenamento)
+            
+            if self.sistema.salvar_categorias():
+                messagebox.showinfo("Sucesso", f"Armazenamento '{armazenamento}' removido com sucesso!")
+                self.atualizar_armazenamentos_remover()
+                self.atualizar_combobox_cadastro()
+            else:
+                messagebox.showerror("Erro", "Falha ao salvar alterações!")
+        else:
+            messagebox.showerror("Erro", "Armazenamento não encontrado!")
 
 if __name__ == "__main__":
     root = tk.Tk()
